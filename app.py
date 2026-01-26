@@ -12,6 +12,7 @@ import score
 import digest
 import render
 import export
+import edge_cases
 
 
 # Pipeline version for cache invalidation
@@ -83,6 +84,12 @@ def initialize_session_state():
         st.session_state['auto_add_on_change'] = False
     if 'previous_top_n' not in st.session_state:
         st.session_state['previous_top_n'] = None
+    if 'participant_filter_patterns' not in st.session_state:
+        st.session_state['participant_filter_patterns'] = []
+    if 'single_sheet_topics' not in st.session_state:
+        st.session_state['single_sheet_topics'] = set()
+    if 'sparse_topics' not in st.session_state:
+        st.session_state['sparse_topics'] = []
 
 
 @st.cache_data
@@ -309,19 +316,29 @@ def filter_topics(
     return filtered
 
 
-def compute_top_topics(topic_aggregates: List[Dict[str, Any]]) -> List[str]:
+def compute_top_topics(topic_aggregates: List[Dict[str, Any]], exclude_single_sheet: bool = True) -> List[str]:
     """
     Compute top topics as a ranked list of topic IDs.
     
     Topics are already sorted by score (descending) with alphabetical tiebreak
     from score.compute_topic_aggregates.
     
+    Excludes single-sheet topics from Top N by default.
+    
     Args:
         topic_aggregates: List of topic aggregates (already sorted by score)
+        exclude_single_sheet: If True, exclude single-sheet topics from Top N
     
     Returns:
-        List of topic IDs in ranked order
+        List of topic IDs in ranked order (excluding single-sheet if requested)
     """
+    single_sheet_topics = st.session_state.get('single_sheet_topics', set())
+    
+    if exclude_single_sheet and single_sheet_topics:
+        # Filter out single-sheet topics
+        filtered = [t['topic_id'] for t in topic_aggregates if t['topic_id'] not in single_sheet_topics]
+        return filtered
+    
     return [t['topic_id'] for t in topic_aggregates]
 
 
@@ -467,9 +484,34 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             st.session_state[SESSION_KEYS['file_hash']] = file_hash
             st.session_state[SESSION_KEYS['uploaded_file']] = uploaded_file
             
+            # Validate file is readable first
+            dict_of_dfs_temp, validation_report_temp, _, _ = process_uploaded_file(bytes_data, {})
+            is_valid, error_msg = edge_cases.validate_file_readable(validation_report_temp)
+            
+            if not is_valid:
+                st.session_state['validation_error'] = error_msg
+                st.session_state[SESSION_KEYS['canonical_model']] = None
+                st.session_state[SESSION_KEYS['topic_aggregates']] = []
+                return None, [], validation_report_temp
+            
             # Process with caching (config can be empty for now)
             config = {}
             dict_of_dfs, validation_report, canonical_model, topic_columns = process_uploaded_file(bytes_data, config)
+            
+            # Apply participant filtering if patterns exist
+            filter_patterns = st.session_state.get('participant_filter_patterns', [])
+            if filter_patterns:
+                canonical_model, filtered_ids = edge_cases.filter_participants_by_regex(
+                    canonical_model, filter_patterns
+                )
+                if filtered_ids:
+                    st.session_state['filtered_participants'] = list(filtered_ids)
+            
+            # Identify single-sheet and sparse topics
+            single_sheet_topics = edge_cases.identify_single_sheet_topics(
+                canonical_model, set(topic_columns)
+            )
+            st.session_state['single_sheet_topics'] = single_sheet_topics
             
             # Store in session state
             st.session_state[SESSION_KEYS['canonical_model']] = canonical_model
@@ -478,6 +520,11 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             
             # Compute scoring with cache
             topic_aggregates = compute_scoring_with_cache(file_hash, bytes_data, config)
+            
+            # Identify sparse topics
+            sparse_topics = edge_cases.identify_sparse_topics(topic_aggregates)
+            st.session_state['sparse_topics'] = sparse_topics
+            
             st.session_state[SESSION_KEYS['topic_aggregates']] = topic_aggregates
             
             # Reset selection and tracking
@@ -637,6 +684,24 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         key='search_input'
     )
     st.session_state[SESSION_KEYS['search_query']] = search_query
+    
+    st.sidebar.divider()
+    
+    # Participant filter (regex denylist)
+    st.sidebar.subheader("Participant Filter")
+    st.sidebar.caption("Filter out participants matching regex patterns (e.g., 'moderator|admin')")
+    filter_pattern_input = st.sidebar.text_input(
+        "Regex patterns (pipe-separated)",
+        value='|'.join(st.session_state.get('participant_filter_patterns', [])),
+        key='participant_filter_input',
+        help="Enter regex patterns separated by | to exclude matching participant IDs"
+    )
+    
+    if filter_pattern_input:
+        patterns = [p.strip() for p in filter_pattern_input.split('|') if p.strip()]
+        st.session_state['participant_filter_patterns'] = patterns
+    else:
+        st.session_state['participant_filter_patterns'] = []
     
     st.sidebar.divider()
     
@@ -887,6 +952,12 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                                             if sentiment_block:
                                                 tone = sentiment_block.get('tone_rollup', 'unknown')
                                                 st.markdown(render.format_sentiment_mix_html({tone: 1}), unsafe_allow_html=True)
+                                            
+                                            # Handle sentiment without quote
+                                            if not quote_text and sentiment_block:
+                                                st.info("⚠️ Sentiment data available but no quote text")
+                                                if sentiment_block.get('tone_rollup') == 'unknown':
+                                                    st.caption("Tone rollup: unknown (no quote to analyze)")
                         
                         st.divider()
                 else:

@@ -1,7 +1,5 @@
 """Module for ingesting data from various sources."""
 
-"""Module for ingesting data from various sources."""
-
 import io
 from typing import Dict, Tuple, Optional, List, Set
 import pandas as pd
@@ -153,8 +151,13 @@ def read_workbook(excel_bytes: bytes) -> Tuple[Dict[str, Optional[pd.DataFrame]]
     try:
         workbook = openpyxl.load_workbook(io.BytesIO(excel_bytes), data_only=True)
     except Exception as e:
-        validation_report['warnings'].append(f"Failed to load workbook: {str(e)}")
+        error_msg = f"Failed to load workbook: {str(e)}"
+        validation_report['warnings'].append(error_msg)
+        validation_report['error'] = error_msg
+        validation_report['is_readable'] = False
         return result_dfs, validation_report
+    
+    validation_report['is_readable'] = True
     
     # Read all sheets into DataFrames and match to roles
     sheet_to_role = {}
@@ -192,6 +195,16 @@ def read_workbook(excel_bytes: bytes) -> Tuple[Dict[str, Optional[pd.DataFrame]]
     for role in target_roles:
         if role not in validation_report['matched_sheets']:
             validation_report['missing_sheets'].append(role)
+            validation_report['warnings'].append(f"Required sheet '{role}' not found or could not be matched")
+    
+    # Check if core sheets are missing
+    core_sheets = ['summary']  # At minimum, summary is required
+    missing_core = [s for s in core_sheets if s in validation_report['missing_sheets']]
+    if missing_core:
+        validation_report['error'] = f"Core required sheets missing: {', '.join(missing_core)}"
+        validation_report['is_valid'] = False
+    else:
+        validation_report['is_valid'] = True
     
     # Compute topic columns intersection across all matched sheets
     if topic_columns_by_sheet:
