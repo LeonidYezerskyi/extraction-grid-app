@@ -696,7 +696,7 @@ def render_validation_stats(validation_report: Dict, canonical_model):
 
 
 def render_takeaways(digest_artifact: Dict[str, Any]):
-    """Render takeaways row."""
+    """Render takeaways row with truncation budgets enforced."""
     st.subheader("Key Takeaways")
     takeaways = digest_artifact.get('takeaways', [])
     
@@ -706,37 +706,75 @@ def render_takeaways(digest_artifact: Dict[str, Any]):
     
     for takeaway in takeaways:
         takeaway_index = takeaway.get('takeaway_index', 0)
-        takeaway_text = render.format_takeaway_text(takeaway.get('takeaway_text', ''))
+        takeaway_text_full = takeaway.get('takeaway_text', '')
+        takeaway_text_truncated = render.format_takeaway_text(takeaway_text_full)
         source_topic_id = takeaway.get('source_topic_id', '')
         
         # Find corresponding topic card
         topic_cards = digest_artifact.get('topic_cards', [])
         topic_card = next((tc for tc in topic_cards if tc['topic_id'] == source_topic_id), None)
         
-        col1, col2 = st.columns([3, 1])
+        # Check if text was truncated
+        is_truncated = len(takeaway_text_full) > render.TAKEAWAY_MAX
         
-        with col1:
-            st.write(f"**{takeaway_index}.** {takeaway_text}")
-            if source_topic_id:
-                st.caption(f"From: {source_topic_id}")
-        
-        with col2:
-            if topic_card:
-                evidence_count = topic_card.get('evidence_count', 0)
-                st.metric("Evidence", evidence_count)
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                # Show truncated text (max 180 chars)
+                st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
                 
-                proof_quote_preview = render.format_quote_preview(topic_card.get('proof_quote_preview', ''))
-                if proof_quote_preview:
-                    with st.expander("Proof Quote"):
-                        st.write(proof_quote_preview)
-                        # Show receipt links
-                        receipt_links = topic_card.get('receipt_links', [])
-                        if receipt_links:
-                            st.caption(f"Receipts: {', '.join(receipt_links[:5])}")
+                # Show full text in expander if truncated
+                if is_truncated:
+                    with st.expander("📖 Show full takeaway"):
+                        st.write(takeaway_text_full)
+                
+                if source_topic_id:
+                    st.caption(f"From: {source_topic_id}")
+            
+            with col2:
+                if topic_card:
+                    # Always show evidence count
+                    evidence_count = topic_card.get('evidence_count', 0)
+                    st.metric("Evidence", evidence_count)
+                    
+                    # Proof quote preview (truncated to 320 chars)
+                    proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
+                    proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
+                    proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
+                    
+                    if proof_quote_preview_truncated:
+                        with st.expander("💬 Proof Quote"):
+                            # Show truncated preview
+                            st.write(proof_quote_preview_truncated)
+                            # Show full text if truncated
+                            if proof_quote_is_truncated:
+                                st.markdown("---")
+                                st.markdown("**Full quote:**")
+                                st.write(proof_quote_preview_full)
+                            
+                            # Always show receipt links
+                            receipt_links = topic_card.get('receipt_links', [])
+                            if receipt_links:
+                                st.markdown("---")
+                                st.caption(f"**Receipts ({len(receipt_links)}):** {', '.join(receipt_links[:10])}")
+                                if len(receipt_links) > 10:
+                                    st.caption(f"... and {len(receipt_links) - 10} more")
+                    
+                    # Always show receipts expander
+                    receipt_links = topic_card.get('receipt_links', [])
+                    if receipt_links:
+                        with st.expander(f"📋 Show Receipts ({len(receipt_links)})"):
+                            st.caption("Receipt references:")
+                            st.write(', '.join(receipt_links))
+                    else:
+                        st.caption("No receipts available")
+            
+            st.divider()
 
 
 def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
-    """Render topic cards row."""
+    """Render topic cards row with truncation budgets enforced."""
     st.subheader("Topic Cards")
     topic_cards = digest_artifact.get('topic_cards', [])
     
@@ -746,37 +784,53 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
     
     for card in topic_cards:
         topic_id = card.get('topic_id', '')
-        topic_oneliner = render.format_topic_oneliner(card.get('topic_one_liner', ''))
+        topic_oneliner_full = card.get('topic_one_liner', '')
+        topic_oneliner_truncated = render.format_topic_oneliner(topic_oneliner_full)
+        topic_oneliner_is_truncated = len(topic_oneliner_full) > render.TOPIC_ONELINER_MAX
+        
         coverage_rate = card.get('coverage_rate', 0.0)
-        evidence_count = card.get('evidence_count', 0)
+        evidence_count = card.get('evidence_count', 0)  # Always show this
         sentiment_mix = card.get('sentiment_mix', {})
-        proof_quote_preview = render.format_quote_preview(card.get('proof_quote_preview', ''))
+        proof_quote_preview_full = card.get('proof_quote_preview', '')
+        proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
+        proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
         receipt_links = card.get('receipt_links', [])
         
         with st.container():
             st.markdown(f"### {topic_id}")
             
-            if topic_oneliner:
-                st.write(topic_oneliner)
+            # Topic one-liner (truncated to 240 chars)
+            if topic_oneliner_truncated:
+                st.write(topic_oneliner_truncated)
+                # Show full text in expander if truncated
+                if topic_oneliner_is_truncated:
+                    with st.expander("📖 Show full one-liner"):
+                        st.write(topic_oneliner_full)
             
-            # Coverage and evidence
+            # Coverage and evidence (always shown)
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown(render.format_coverage_bar_html(coverage_rate))
+                st.markdown(render.format_coverage_bar_html(coverage_rate), unsafe_allow_html=True)
             with col2:
                 st.metric("Evidence Count", evidence_count)
             
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
             
-            # Proof quote
-            if proof_quote_preview:
-                with st.expander("Proof Quote"):
-                    st.write(proof_quote_preview)
+            # Proof quote preview (truncated to 320 chars)
+            if proof_quote_preview_truncated:
+                with st.expander("💬 Proof Quote"):
+                    # Show truncated preview
+                    st.write(proof_quote_preview_truncated)
+                    # Show full text if truncated
+                    if proof_quote_is_truncated:
+                        st.markdown("---")
+                        st.markdown("**Full quote:**")
+                        st.write(proof_quote_preview_full)
             
-            # Receipts expander
-            if receipt_links:
-                with st.expander(f"Receipts ({len(receipt_links)})"):
+            # Always show receipts expander (even if empty)
+            with st.expander(f"📋 Show Receipts ({len(receipt_links) if receipt_links else 0})"):
+                if receipt_links:
                     # Group by participant
                     participant_receipts = {}
                     for receipt_ref in receipt_links:
@@ -792,9 +846,15 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         # Get evidence cell for this participant and topic
                         for evidence_cell in canonical_model.evidence_cells:
                             if evidence_cell.participant_id == participant_id and evidence_cell.topic_id == topic_id:
+                                # Show summary if available
                                 if evidence_cell.summary_text:
-                                    st.write(f"*Summary:* {evidence_cell.summary_text}")
+                                    summary_truncated = render.truncate(evidence_cell.summary_text, 200)
+                                    st.write(f"*Summary:* {summary_truncated}")
+                                    if len(evidence_cell.summary_text) > 200:
+                                        with st.expander(f"Show full summary for {participant_id}"):
+                                            st.write(evidence_cell.summary_text)
                                 
+                                # Parse and show quotes
                                 if evidence_cell.quotes_raw:
                                     quote_blocks = parse_quotes.parse_quotes(evidence_cell.quotes_raw)
                                     sentiment_blocks = []
@@ -807,10 +867,19 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                                         quote_index = quote_block.get('quote_index', 0)
                                         # Match both string and int representations
                                         if str(quote_index) in quote_indices or quote_index in [int(qi) for qi in quote_indices if qi.isdigit()]:
-                                            st.markdown(f"**Quote {quote_index}:**")
-                                            st.write(quote_block.get('quote_text', ''))
+                                            quote_text = quote_block.get('quote_text', '')
+                                            quote_text_truncated = render.format_quote_preview(quote_text)
                                             
-                                            # Find sentiment
+                                            st.markdown(f"**Quote {quote_index}:**")
+                                            # Show truncated quote
+                                            st.write(quote_text_truncated)
+                                            
+                                            # Show full quote if truncated
+                                            if len(quote_text) > render.QUOTE_PREVIEW_MAX:
+                                                with st.expander(f"Show full quote {quote_index}"):
+                                                    st.write(quote_text)
+                                            
+                                            # Find and show sentiment
                                             sentiment_block = next(
                                                 (sb for sb in sentiment_blocks if sb['quote_index'] == quote_index),
                                                 None
@@ -820,6 +889,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                                                 st.markdown(render.format_sentiment_mix_html({tone: 1}), unsafe_allow_html=True)
                         
                         st.divider()
+                else:
+                    st.info("No receipts available for this topic.")
+            
+            st.divider()
 
 
 def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
