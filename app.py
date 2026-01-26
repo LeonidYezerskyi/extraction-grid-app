@@ -79,6 +79,10 @@ def initialize_session_state():
         st.session_state[SESSION_KEYS['search_query']] = ''
     if SESSION_KEYS['file_hash'] not in st.session_state:
         st.session_state[SESSION_KEYS['file_hash']] = None
+    if 'auto_add_on_change' not in st.session_state:
+        st.session_state['auto_add_on_change'] = False
+    if 'previous_top_n' not in st.session_state:
+        st.session_state['previous_top_n'] = None
 
 
 @st.cache_data
@@ -305,6 +309,140 @@ def filter_topics(
     return filtered
 
 
+def compute_top_topics(topic_aggregates: List[Dict[str, Any]]) -> List[str]:
+    """
+    Compute top topics as a ranked list of topic IDs.
+    
+    Topics are already sorted by score (descending) with alphabetical tiebreak
+    from score.compute_topic_aggregates.
+    
+    Args:
+        topic_aggregates: List of topic aggregates (already sorted by score)
+    
+    Returns:
+        List of topic IDs in ranked order
+    """
+    return [t['topic_id'] for t in topic_aggregates]
+
+
+def compute_selected_topics(
+    top_topics: List[str],
+    current_selected: List[str],
+    top_n: int,
+    auto_select: bool,
+    auto_add_on_change: bool,
+    previous_top_n: Optional[int] = None
+) -> List[str]:
+    """
+    Compute selected topics based on selection behavior rules.
+    
+    Rules:
+    - If auto_select is True and no current selection, default to top_topics[:N]
+    - When N changes:
+      - If N increases and auto_add_on_change is True, append newly included topics
+      - If N decreases, do not auto-remove manually added topics
+    - Maintains stability: preserves user's manual additions
+    
+    Args:
+        top_topics: Ranked list of topic IDs
+        current_selected: Currently selected topic IDs
+        top_n: Current N value
+        auto_select: Whether auto-select is enabled
+        auto_add_on_change: Whether to auto-add when N increases
+        previous_top_n: Previous N value (for detecting changes)
+    
+    Returns:
+        Updated list of selected topic IDs
+    """
+    if not top_topics:
+        return []
+    
+    # If auto_select is False, return current selection as-is
+    if not auto_select:
+        return current_selected.copy()
+    
+    # Determine top N topics
+    top_n_topics = top_topics[:top_n]
+    
+    # If no current selection, initialize with top N
+    if not current_selected:
+        return top_n_topics.copy()
+    
+    # Check if N changed
+    n_increased = previous_top_n is not None and top_n > previous_top_n
+    n_decreased = previous_top_n is not None and top_n < previous_top_n
+    
+    # Build new selection
+    new_selected = []
+    
+    # Always include topics that are in top N
+    for topic_id in top_n_topics:
+        if topic_id not in new_selected:
+            new_selected.append(topic_id)
+    
+    # If N increased and auto_add_on_change, add newly included topics
+    if n_increased and auto_add_on_change:
+        # Find topics that are now in top N but weren't before
+        previous_top_n_topics = top_topics[:previous_top_n] if previous_top_n else []
+        newly_included = [t for t in top_n_topics if t not in previous_top_n_topics]
+        for topic_id in newly_included:
+            if topic_id not in new_selected:
+                new_selected.append(topic_id)
+    
+    # Preserve manually added topics (those not in top N)
+    # These are topics the user added that are outside the current top N
+    manually_added = [t for t in current_selected if t not in top_n_topics]
+    
+    # If N decreased, preserve all manually added topics
+    if n_decreased:
+        for topic_id in manually_added:
+            if topic_id not in new_selected:
+                new_selected.append(topic_id)
+    else:
+        # If N didn't decrease, still preserve manually added topics
+        # (user intent: they explicitly added these)
+        for topic_id in manually_added:
+            if topic_id not in new_selected:
+                new_selected.append(topic_id)
+    
+    # Maintain order: top N first, then manually added
+    ordered_selected = []
+    # Add top N topics in order
+    for topic_id in top_topics:
+        if topic_id in new_selected:
+            ordered_selected.append(topic_id)
+    # Add manually added topics at the end
+    for topic_id in manually_added:
+        if topic_id in new_selected and topic_id not in ordered_selected:
+            ordered_selected.append(topic_id)
+    
+    return ordered_selected
+
+
+def reset_to_top_n(top_topics: List[str], top_n: int) -> List[str]:
+    """
+    Reset selection to top N topics.
+    
+    Args:
+        top_topics: Ranked list of topic IDs
+        top_n: Number of topics to select
+    
+    Returns:
+        List of top N topic IDs
+    """
+    return top_topics[:top_n].copy()
+
+
+def clear_selection() -> List[str]:
+    """
+    Clear all selected topics.
+    
+    Returns:
+        Empty list
+    """
+    return []
+
+
 def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     """Render sidebar with all controls."""
     st.sidebar.header("Controls")
@@ -342,8 +480,9 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             topic_aggregates = compute_scoring_with_cache(file_hash, bytes_data, config)
             st.session_state[SESSION_KEYS['topic_aggregates']] = topic_aggregates
             
-            # Reset selection
+            # Reset selection and tracking
             st.session_state[SESSION_KEYS['selected_topics']] = []
+            st.session_state['previous_top_n'] = None
         else:
             # Same file - use cached data from session state
             canonical_model = st.session_state.get(SESSION_KEYS['canonical_model'])
@@ -368,6 +507,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.divider()
     
     # Top N slider
+    previous_top_n = st.session_state.get('previous_top_n')
     top_n = st.sidebar.slider(
         "Top N Topics",
         min_value=4,
@@ -375,6 +515,10 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         value=st.session_state[SESSION_KEYS['top_n']],
         key='top_n_slider'
     )
+    
+    # Track if N changed
+    n_changed = previous_top_n is not None and top_n != previous_top_n
+    st.session_state['previous_top_n'] = top_n
     st.session_state[SESSION_KEYS['top_n']] = top_n
     
     # Auto-select Top N checkbox
@@ -385,24 +529,46 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     )
     st.session_state[SESSION_KEYS['auto_select_top_n']] = auto_select
     
+    # Auto-add when N changes checkbox
+    auto_add_on_change = st.sidebar.checkbox(
+        "Auto-add when N changes",
+        value=st.session_state.get('auto_add_on_change', False),
+        key='auto_add_on_change_checkbox'
+    )
+    st.session_state['auto_add_on_change'] = auto_add_on_change
+    
     if not topic_aggregates:
         st.sidebar.info("Upload a file to begin")
         return canonical_model, topic_aggregates, validation_report
     
+    # Compute top topics
+    top_topics = compute_top_topics(topic_aggregates)
+    
     # Get available topic IDs
     available_topic_ids = [t['topic_id'] for t in topic_aggregates]
     
-    # Auto-select Top N if enabled
-    if auto_select:
-        top_n_topics = [t['topic_id'] for t in topic_aggregates[:top_n]]
-        if set(st.session_state[SESSION_KEYS['selected_topics']]) != set(top_n_topics):
-            st.session_state[SESSION_KEYS['selected_topics']] = top_n_topics
+    # Compute selected topics based on behavior rules
+    current_selected = st.session_state.get(SESSION_KEYS['selected_topics'], [])
+    
+    # Update selection if auto_select is enabled or N changed
+    if auto_select or n_changed:
+        new_selected = compute_selected_topics(
+            top_topics,
+            current_selected,
+            top_n,
+            auto_select,
+            auto_add_on_change,
+            previous_top_n
+        )
+        if new_selected != current_selected:
+            st.session_state[SESSION_KEYS['selected_topics']] = new_selected
+            current_selected = new_selected
     
     # Multi-select for selected topics
     selected = st.sidebar.multiselect(
         "Selected Topics",
         options=available_topic_ids,
-        default=st.session_state[SESSION_KEYS['selected_topics']],
+        default=current_selected,
         key='topic_multiselect'
     )
     st.session_state[SESSION_KEYS['selected_topics']] = selected
@@ -426,13 +592,13 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     col1, col2 = st.sidebar.columns(2)
     with col1:
         if st.button("Reset to Top N", key='reset_button'):
-            top_n_topics = [t['topic_id'] for t in topic_aggregates[:top_n]]
-            st.session_state[SESSION_KEYS['selected_topics']] = top_n_topics
+            new_selection = reset_to_top_n(top_topics, top_n)
+            st.session_state[SESSION_KEYS['selected_topics']] = new_selection
             st.rerun()
     
     with col2:
         if st.button("Clear Selection", key='clear_button'):
-            st.session_state[SESSION_KEYS['selected_topics']] = []
+            st.session_state[SESSION_KEYS['selected_topics']] = clear_selection()
             st.rerun()
     
     st.sidebar.divider()
@@ -746,6 +912,105 @@ def main():
     
     with tab2:
         render_explore_tab(topic_aggregates, canonical_model)
+
+
+# Unit tests for topic selection behavior
+if __name__ == "__main__" and False:  # Set to True to run tests
+    import unittest
+    
+    class TestTopicSelection(unittest.TestCase):
+        
+        def test_compute_top_topics(self):
+            """Test computing top topics from aggregates."""
+            aggregates = [
+                {'topic_id': 'topic1', 'topic_score': 0.9},
+                {'topic_id': 'topic2', 'topic_score': 0.8},
+                {'topic_id': 'topic3', 'topic_score': 0.7},
+            ]
+            top_topics = compute_top_topics(aggregates)
+            self.assertEqual(top_topics, ['topic1', 'topic2', 'topic3'])
+        
+        def test_compute_selected_topics_initial(self):
+            """Test initial selection when auto_select is True."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            selected = compute_selected_topics(top_topics, [], 3, True, False, None)
+            self.assertEqual(selected, ['t1', 't2', 't3'])
+        
+        def test_compute_selected_topics_n_increase_with_auto_add(self):
+            """Test N increase with auto_add_on_change enabled."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            current = ['t1', 't2', 't3']  # Top 3
+            # Increase to 5 with auto_add enabled
+            selected = compute_selected_topics(top_topics, current, 5, True, True, 3)
+            # Should include t4 and t5
+            self.assertIn('t4', selected)
+            self.assertIn('t5', selected)
+            self.assertEqual(len(selected), 5)
+        
+        def test_compute_selected_topics_n_increase_without_auto_add(self):
+            """Test N increase without auto_add_on_change."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            current = ['t1', 't2', 't3']  # Top 3
+            # Increase to 5 without auto_add
+            selected = compute_selected_topics(top_topics, current, 5, True, False, 3)
+            # Should still only have top 3 (no auto-add)
+            self.assertEqual(set(selected), {'t1', 't2', 't3'})
+        
+        def test_compute_selected_topics_n_decrease_preserves_manual(self):
+            """Test N decrease preserves manually added topics."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            # User has top 5 selected, plus manually added t10
+            current = ['t1', 't2', 't3', 't4', 't5', 't10']
+            # Decrease to 3
+            selected = compute_selected_topics(top_topics, current, 3, True, False, 5)
+            # Should preserve t10 (manually added)
+            self.assertIn('t10', selected)
+            # Should have top 3
+            self.assertIn('t1', selected)
+            self.assertIn('t2', selected)
+            self.assertIn('t3', selected)
+        
+        def test_compute_selected_topics_manual_add_preserved(self):
+            """Test that manually added topics are preserved."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            # User manually added t10 (outside top N=3)
+            current = ['t1', 't2', 't3', 't10']
+            selected = compute_selected_topics(top_topics, current, 3, True, False, 3)
+            # Should preserve t10
+            self.assertIn('t10', selected)
+            # Should have top 3
+            self.assertEqual(set(selected[:3]), {'t1', 't2', 't3'})
+        
+        def test_reset_to_top_n(self):
+            """Test reset to top N function."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            result = reset_to_top_n(top_topics, 3)
+            self.assertEqual(result, ['t1', 't2', 't3'])
+        
+        def test_clear_selection(self):
+            """Test clear selection function."""
+            result = clear_selection()
+            self.assertEqual(result, [])
+        
+        def test_compute_selected_topics_auto_select_false(self):
+            """Test that auto_select=False preserves current selection."""
+            top_topics = ['t1', 't2', 't3']
+            current = ['t2', 't3']  # User's manual selection
+            selected = compute_selected_topics(top_topics, current, 3, False, False, None)
+            # Should preserve user's selection
+            self.assertEqual(selected, current)
+        
+        def test_compute_selected_topics_order(self):
+            """Test that selection maintains proper order."""
+            top_topics = ['t1', 't2', 't3', 't4', 't5']
+            # Top 3 + manually added t10
+            current = ['t1', 't2', 't3', 't10']
+            selected = compute_selected_topics(top_topics, current, 3, True, False, 3)
+            # Top N should come first, then manually added
+            self.assertEqual(selected[:3], ['t1', 't2', 't3'])
+            self.assertIn('t10', selected[3:])
+    
+    unittest.main()
 
 
 if __name__ == "__main__":
