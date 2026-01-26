@@ -2,7 +2,8 @@
 
 import streamlit as st
 import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
+import hashlib
 import ingest
 import normalize
 import parse_quotes
@@ -13,6 +14,9 @@ import render
 import export
 
 
+# Pipeline version for cache invalidation
+PIPELINE_VERSION = "1.0.0"
+
 # Session state keys
 SESSION_KEYS = {
     'selected_topics': 'selected_topics',
@@ -21,9 +25,40 @@ SESSION_KEYS = {
     'filters': 'filters',
     'search_query': 'search_query',
     'uploaded_file': 'uploaded_file',
+    'file_hash': 'file_hash',
     'canonical_model': 'canonical_model',
-    'topic_aggregates': 'topic_aggregates'
+    'topic_aggregates': 'topic_aggregates',
+    'validation_report': 'validation_report'
 }
+
+
+def compute_file_hash(file_bytes: bytes) -> str:
+    """
+    Compute MD5 hash of file bytes for cache key.
+    
+    Args:
+        file_bytes: File bytes
+    
+    Returns:
+        MD5 hash as hex string
+    """
+    return hashlib.md5(file_bytes).hexdigest()
+
+
+def get_config_knobs_hash(config: Dict[str, Any]) -> str:
+    """
+    Get hash of configuration knobs for cache key.
+    
+    Args:
+        config: Configuration dictionary
+    
+    Returns:
+        Hash string of sorted config items
+    """
+    # Sort items for deterministic hash
+    sorted_items = sorted(config.items())
+    config_str = str(sorted_items)
+    return hashlib.md5(config_str.encode()).hexdigest()
 
 
 def initialize_session_state():
@@ -42,43 +77,147 @@ def initialize_session_state():
         }
     if SESSION_KEYS['search_query'] not in st.session_state:
         st.session_state[SESSION_KEYS['search_query']] = ''
+    if SESSION_KEYS['file_hash'] not in st.session_state:
+        st.session_state[SESSION_KEYS['file_hash']] = None
 
 
 @st.cache_data
-def process_uploaded_file(uploaded_file_bytes: bytes) -> tuple:
+def cached_read_workbook(
+    file_hash: str,
+    pipeline_version: str,
+    config_hash: str,
+    file_bytes: bytes
+) -> Tuple[Dict[str, Optional[pd.DataFrame]], Dict[str, Any]]:
     """
-    Process uploaded file: ingest and normalize.
+    Cached wrapper for ingest.read_workbook.
+    
+    Cache key includes file_hash, pipeline_version, and config_hash.
+    This ensures cache invalidation on file change or pipeline update.
     
     Args:
-        uploaded_file_bytes: Bytes of uploaded Excel file
+        file_hash: MD5 hash of file bytes (for cache key)
+        pipeline_version: Pipeline version string (for cache key)
+        config_hash: Hash of configuration knobs (for cache key)
+        file_bytes: Actual file bytes (used for processing)
     
     Returns:
-        Tuple of (dict_of_dfs, validation_report, canonical_model, topic_columns)
+        Tuple of (dict_of_dfs, validation_report)
     """
-    # Ingest
-    dict_of_dfs, validation_report = ingest.read_workbook(uploaded_file_bytes)
-    
-    # Get topic columns from validation report
-    topic_columns = list(validation_report.get('topic_columns', []))
-    
-    # Normalize
-    canonical_model = normalize.wide_to_canonical(dict_of_dfs, topic_columns)
-    
-    return dict_of_dfs, validation_report, canonical_model, topic_columns
+    return ingest.read_workbook(file_bytes)
 
 
 @st.cache_data
-def compute_scoring(canonical_model) -> List[Dict[str, Any]]:
+def cached_normalize(
+    file_hash: str,
+    pipeline_version: str,
+    config_hash: str,
+    topic_columns: Tuple[str, ...],
+    file_bytes: bytes
+) -> normalize.CanonicalModel:
     """
-    Compute topic aggregates and scores.
+    Cached wrapper for normalize.wide_to_canonical.
+    
+    Cache key includes file_hash, pipeline_version, config_hash, and topic_columns.
     
     Args:
-        canonical_model: CanonicalModel object
+        file_hash: MD5 hash of file bytes (for cache key)
+        pipeline_version: Pipeline version string (for cache key)
+        config_hash: Hash of configuration knobs (for cache key)
+        topic_columns: Tuple of topic column names (must be hashable)
+        file_bytes: File bytes (passed through for read_workbook)
+    
+    Returns:
+        CanonicalModel object
+    """
+    # Get dict_of_dfs from cached read_workbook
+    dict_of_dfs, _ = cached_read_workbook(file_hash, pipeline_version, config_hash, file_bytes)
+    
+    return normalize.wide_to_canonical(dict_of_dfs, list(topic_columns))
+
+
+@st.cache_data
+def cached_compute_scoring(
+    file_hash: str,
+    pipeline_version: str,
+    config_hash: str,
+    topic_columns: Tuple[str, ...],
+    file_bytes: bytes
+) -> List[Dict[str, Any]]:
+    """
+    Cached wrapper for score.compute_topic_aggregates.
+    
+    Cache key includes file_hash, pipeline_version, config_hash, and topic_columns.
+    This ensures scoring is only recomputed when input data or config changes.
+    
+    Args:
+        file_hash: MD5 hash of file bytes (for cache key)
+        pipeline_version: Pipeline version string (for cache key)
+        config_hash: Hash of configuration knobs (for cache key)
+        topic_columns: Tuple of topic column names
+        file_bytes: File bytes (passed through for pipeline)
     
     Returns:
         List of topic aggregates
     """
+    canonical_model = cached_normalize(file_hash, pipeline_version, config_hash, topic_columns, file_bytes)
     return score.compute_topic_aggregates(canonical_model)
+
+
+def process_uploaded_file(uploaded_file_bytes: bytes, config: Optional[Dict[str, Any]] = None) -> Tuple[Dict[str, Optional[pd.DataFrame]], Dict[str, Any], normalize.CanonicalModel, List[str]]:
+    """
+    Process uploaded file: ingest and normalize with proper caching.
+    
+    This function orchestrates the cached pipeline steps.
+    
+    Args:
+        uploaded_file_bytes: Bytes of uploaded Excel file
+        config: Optional configuration dictionary for cache key
+    
+    Returns:
+        Tuple of (dict_of_dfs, validation_report, canonical_model, topic_columns)
+    """
+    # Compute hashes for cache keys
+    file_hash = compute_file_hash(uploaded_file_bytes)
+    config = config or {}
+    config_hash = get_config_knobs_hash(config)
+    
+    # Ingest (cached)
+    dict_of_dfs, validation_report = cached_read_workbook(file_hash, PIPELINE_VERSION, config_hash, uploaded_file_bytes)
+    
+    # Get topic columns from validation report
+    topic_columns = list(validation_report.get('topic_columns', []))
+    topic_columns_tuple = tuple(topic_columns)  # Make hashable for cache
+    
+    # Normalize (cached)
+    canonical_model = cached_normalize(file_hash, PIPELINE_VERSION, config_hash, topic_columns_tuple, uploaded_file_bytes)
+    
+    return dict_of_dfs, validation_report, canonical_model, topic_columns
+
+
+def compute_scoring_with_cache(
+    file_hash: str,
+    file_bytes: bytes,
+    config: Optional[Dict[str, Any]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Compute topic aggregates and scores with proper caching.
+    
+    Args:
+        file_hash: MD5 hash of file bytes
+        file_bytes: File bytes (needed for cache chain)
+        config: Optional configuration dictionary for cache key
+    
+    Returns:
+        List of topic aggregates
+    """
+    config = config or {}
+    config_hash = get_config_knobs_hash(config)
+    
+    # Get topic columns from session state
+    topic_columns = st.session_state.get('topic_columns', [])
+    topic_columns_tuple = tuple(topic_columns)
+    
+    return cached_compute_scoring(file_hash, PIPELINE_VERSION, config_hash, topic_columns_tuple, file_bytes)
 
 
 def filter_topics(
@@ -180,23 +319,46 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     validation_report = {}
     
     if uploaded_file is not None:
-        if st.session_state.get(SESSION_KEYS['uploaded_file']) != uploaded_file:
-            # New file uploaded, clear cache and process
-            st.cache_data.clear()
+        bytes_data = uploaded_file.read()
+        file_hash = compute_file_hash(bytes_data)
+        current_file_hash = st.session_state.get(SESSION_KEYS['file_hash'])
+        
+        # Check if file changed (by hash)
+        if current_file_hash != file_hash:
+            # New file uploaded - update hash and process
+            st.session_state[SESSION_KEYS['file_hash']] = file_hash
             st.session_state[SESSION_KEYS['uploaded_file']] = uploaded_file
-            bytes_data = uploaded_file.read()
-            dict_of_dfs, validation_report, canonical_model, topic_columns = process_uploaded_file(bytes_data)
+            
+            # Process with caching (config can be empty for now)
+            config = {}
+            dict_of_dfs, validation_report, canonical_model, topic_columns = process_uploaded_file(bytes_data, config)
+            
+            # Store in session state
             st.session_state[SESSION_KEYS['canonical_model']] = canonical_model
-            st.session_state['validation_report'] = validation_report
-            topic_aggregates = compute_scoring(canonical_model)
+            st.session_state[SESSION_KEYS['validation_report']] = validation_report
+            st.session_state['topic_columns'] = topic_columns
+            
+            # Compute scoring with cache
+            topic_aggregates = compute_scoring_with_cache(file_hash, bytes_data, config)
             st.session_state[SESSION_KEYS['topic_aggregates']] = topic_aggregates
+            
             # Reset selection
             st.session_state[SESSION_KEYS['selected_topics']] = []
         else:
-            # Use existing data from session state
+            # Same file - use cached data from session state
             canonical_model = st.session_state.get(SESSION_KEYS['canonical_model'])
             topic_aggregates = st.session_state.get(SESSION_KEYS['topic_aggregates'], [])
-            validation_report = st.session_state.get('validation_report', {})
+            validation_report = st.session_state.get(SESSION_KEYS['validation_report'], {})
+            
+            # If missing, recompute from cache
+            if canonical_model is None or not topic_aggregates:
+                config = {}
+                dict_of_dfs, validation_report, canonical_model, topic_columns = process_uploaded_file(bytes_data, config)
+                st.session_state[SESSION_KEYS['canonical_model']] = canonical_model
+                st.session_state[SESSION_KEYS['validation_report']] = validation_report
+                st.session_state['topic_columns'] = topic_columns
+                topic_aggregates = compute_scoring_with_cache(file_hash, bytes_data, config)
+                st.session_state[SESSION_KEYS['topic_aggregates']] = topic_aggregates
     else:
         # No file uploaded, use session state if available
         canonical_model = st.session_state.get(SESSION_KEYS['canonical_model'])
