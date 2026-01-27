@@ -52,26 +52,45 @@ def _compute_sentiment_mix(evidence_cells, topic_id: str) -> Dict[str, int]:
             # If tone is unknown but we have labels, try to reclassify them
             # This helps catch cases where labels weren't properly classified
             if tone == 'unknown' and labels:
-                # Check labels for sentiment keywords
-                label_text = ' '.join(labels).lower()
-                has_positive_keywords = any(kw in label_text for kw in 
-                    ['positive', 'pos', 'good', 'favorable', 'optimistic', 'happy', 'satisfied', 
-                     'yes', 'agree', 'support', 'pro', 'like', 'love', 'excellent', 'great'])
-                has_negative_keywords = any(kw in label_text for kw in 
-                    ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
-                     'no', 'disagree', 'against', 'oppose', 'con', 'dislike', 'hate', 'poor', 'terrible'])
-                has_neutral_keywords = any(kw in label_text for kw in 
-                    ['neutral', 'neut', 'none', 'n/a', 'na', 'unknown', 'unclear', 'mixed', 'both'])
+                # Try to classify each label individually
+                import parse_sentiment as ps
+                classifications = []
+                for label in labels:
+                    # Try direct classification
+                    classification = ps._classify_label(label)
+                    if classification:
+                        classifications.append(classification)
+                    else:
+                        # Try substring matching
+                        label_lower = label.lower()
+                        if any(kw in label_lower for kw in ['positive', 'pos', 'good', 'favorable', 'optimistic', 
+                                                           'happy', 'satisfied', 'yes', 'agree', 'support', 'pro', 
+                                                           'like', 'love', 'excellent', 'great', 'wonderful', 'upbeat', 
+                                                           'cheerful', 'pleased', 'enthusiastic', 'excited', 'hopeful']):
+                            classifications.append('positive')
+                        elif any(kw in label_lower for kw in ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic',
+                                                             'sad', 'dissatisfied', 'no', 'disagree', 'against', 'oppose',
+                                                             'con', 'dislike', 'hate', 'poor', 'terrible', 'awful',
+                                                             'upset', 'worried', 'concerned', 'frustrated', 'annoyed']):
+                            classifications.append('negative')
+                        elif any(kw in label_lower for kw in ['neutral', 'neut', 'none', 'n/a', 'na', 'unclear',
+                                                             'mixed', 'both', 'ok', 'okay', 'fine', 'average', 'moderate']):
+                            classifications.append('neutral')
                 
-                # Recompute tone based on keywords found
-                if has_positive_keywords and has_negative_keywords:
-                    tone = 'mixed'
-                elif has_positive_keywords and not has_negative_keywords:
-                    tone = 'positive'
-                elif has_negative_keywords and not has_positive_keywords:
-                    tone = 'negative'
-                elif has_neutral_keywords and not has_positive_keywords and not has_negative_keywords:
-                    tone = 'neutral'
+                # Recompute tone from classifications
+                if classifications:
+                    has_positive = 'positive' in classifications
+                    has_negative = 'negative' in classifications
+                    has_neutral = 'neutral' in classifications
+                    
+                    if has_positive and has_negative:
+                        tone = 'mixed'
+                    elif has_positive and not has_negative:
+                        tone = 'positive'
+                    elif has_negative and not has_positive:
+                        tone = 'negative'
+                    elif has_neutral and not has_positive and not has_negative:
+                        tone = 'neutral'
             
             if tone in sentiment_counts:
                 sentiment_counts[tone] += 1

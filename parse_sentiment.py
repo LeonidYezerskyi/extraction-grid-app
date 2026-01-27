@@ -9,18 +9,27 @@ POSITIVE_LABELS = {
     'positive', 'pos', '+', 'good', 'favorable', 'optimistic', 'happy', 'satisfied',
     'p', 'pos.', 'positive.', 'good.', 'favorable.', 'optimistic.', 'happy.', 'satisfied.',
     'yes', 'y', 'agree', 'agreement', 'support', 'supportive', 'pro', 'liked', 'like',
-    'excellent', 'great', 'wonderful', 'amazing', 'fantastic', 'love', 'loved'
+    'excellent', 'great', 'wonderful', 'amazing', 'fantastic', 'love', 'loved',
+    '1', '+1', 'pos1', 'positive1',  # Numeric codes
+    'upbeat', 'cheerful', 'pleased', 'content', 'grateful', 'appreciative',
+    'enthusiastic', 'excited', 'hopeful', 'confident', 'optimistic'
 }
 NEGATIVE_LABELS = {
     'negative', 'neg', '-', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
     'n', 'neg.', 'negative.', 'bad.', 'unfavorable.', 'pessimistic.', 'sad.', 'dissatisfied.',
     'no', 'disagree', 'disagreement', 'against', 'oppose', 'opposed', 'con', 'disliked', 'dislike',
-    'poor', 'terrible', 'awful', 'hate', 'hated', 'frustrated', 'angry', 'disappointed'
+    'poor', 'terrible', 'awful', 'hate', 'hated', 'frustrated', 'angry', 'disappointed',
+    '2', '-1', 'neg1', 'negative1',  # Numeric codes
+    'upset', 'worried', 'concerned', 'disappointed', 'frustrated', 'annoyed',
+    'skeptical', 'doubtful', 'pessimistic', 'critical', 'unhappy', 'uncomfortable'
 }
 NEUTRAL_LABELS = {
     'neutral', 'neut', '0', 'none', 'indifferent', 'mixed-neutral',
     'n/a', 'na', 'n.a.', 'not applicable', 'not available', 'unknown', 'unclear',
-    'mixed', 'both', 'ambivalent', 'uncertain', 'unsure', 'maybe', 'perhaps'
+    'mixed', 'both', 'ambivalent', 'uncertain', 'unsure', 'maybe', 'perhaps',
+    '3', '0', 'neut1', 'neutral1',  # Numeric codes
+    'ok', 'okay', 'fine', 'average', 'moderate', 'so-so', 'meh',
+    'balanced', 'even', 'equal', 'similar', 'comparable'
 }
 
 
@@ -58,19 +67,33 @@ def _classify_label(label: str) -> Optional[str]:
     else:
         # Check if label contains positive/negative keywords (more comprehensive)
         positive_keywords = ['positive', 'pos', 'good', 'favorable', 'optimistic', 'happy', 'satisfied', 
-                            'yes', 'agree', 'support', 'pro', 'like', 'love', 'excellent', 'great', 'wonderful']
+                            'yes', 'agree', 'support', 'pro', 'like', 'love', 'excellent', 'great', 'wonderful',
+                            'upbeat', 'cheerful', 'pleased', 'content', 'grateful', 'appreciative',
+                            'enthusiastic', 'excited', 'hopeful', 'confident']
         negative_keywords = ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
-                            'no', 'disagree', 'against', 'oppose', 'con', 'dislike', 'hate', 'poor', 'terrible', 'awful']
-        neutral_keywords = ['neutral', 'neut', 'none', 'n/a', 'na', 'unknown', 'unclear', 'mixed', 'both', 'ambivalent']
+                            'no', 'disagree', 'against', 'oppose', 'con', 'dislike', 'hate', 'poor', 'terrible', 'awful',
+                            'upset', 'worried', 'concerned', 'disappointed', 'frustrated', 'annoyed',
+                            'skeptical', 'doubtful', 'critical', 'unhappy', 'uncomfortable']
+        neutral_keywords = ['neutral', 'neut', 'none', 'n/a', 'na', 'unknown', 'unclear', 'mixed', 'both', 'ambivalent',
+                           'ok', 'okay', 'fine', 'average', 'moderate', 'so-so', 'meh',
+                           'balanced', 'even', 'equal', 'similar', 'comparable']
         
-        # Check for positive keywords
+        # Check for positive keywords (substring match)
         if any(keyword in normalized for keyword in positive_keywords):
             return 'positive'
-        # Check for negative keywords
+        # Check for negative keywords (substring match)
         elif any(keyword in normalized for keyword in negative_keywords):
             return 'negative'
-        # Check for neutral keywords
+        # Check for neutral keywords (substring match)
         elif any(keyword in normalized for keyword in neutral_keywords):
+            return 'neutral'
+        
+        # Try numeric codes: 1=positive, 2=negative, 3/0=neutral
+        if normalized in ['1', '+1']:
+            return 'positive'
+        elif normalized in ['2', '-1', '-2']:
+            return 'negative'
+        elif normalized in ['0', '3']:
             return 'neutral'
     
     return None
@@ -346,7 +369,18 @@ def parse_and_align_sentiments(
         >>> blocks[0]['tone_rollup']
         'positive'
     """
-    if not sentiments_raw or not sentiments_raw.strip():
+    # Normalize and clean input
+    if not sentiments_raw:
+        sentiments_raw = ''
+    
+    # Remove extra whitespace and normalize
+    text = str(sentiments_raw).strip()
+    
+    # Remove common non-printable characters but keep meaningful ones
+    text = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    text = text.strip()
+    
+    if not text or text.lower() in ['nan', 'none', 'null', 'n/a', 'na', '']:
         # Return empty sentiment blocks for all quotes
         return [{
             'quote_index': block['quote_index'],
@@ -357,8 +391,6 @@ def parse_and_align_sentiments(
     
     if not quote_blocks:
         return []
-    
-    text = sentiments_raw.strip()
     
     # If text is a single word that looks like a sentiment, treat it as such
     # This handles cases where sentiments_raw is just "positive", "negative", etc.
