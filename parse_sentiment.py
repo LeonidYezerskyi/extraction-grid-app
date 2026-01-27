@@ -152,7 +152,9 @@ def _parse_numbered_sentiments(text: str) -> Optional[Dict[int, List[str]]]:
 
 def _parse_flat_sentiments(text: str) -> List[str]:
     """
-    Parse flat list of sentiments (comma or semicolon separated).
+    Parse flat list of sentiments (comma or semicolon separated, or space-separated).
+    
+    Also handles single words and simple lists without delimiters.
     
     Args:
         text: Text containing flat sentiment list
@@ -163,11 +165,40 @@ def _parse_flat_sentiments(text: str) -> List[str]:
     if not text or not text.strip():
         return []
     
-    # Split by common delimiters
-    labels = re.split(r'[;,\n]', text)
-    labels = [_normalize_label(l) for l in labels if l.strip()]
+    text = text.strip()
     
-    return labels
+    # First try splitting by common delimiters (semicolon, comma, newline)
+    if ';' in text or ',' in text or '\n' in text:
+        labels = re.split(r'[;,\n]', text)
+        labels = [_normalize_label(l) for l in labels if l.strip()]
+        return labels
+    
+    # If no delimiters, try splitting by spaces (but be careful with multi-word labels)
+    # Check if it's a single word that might be a sentiment
+    words = text.split()
+    if len(words) == 1:
+        # Single word - treat as one label
+        normalized = _normalize_label(words[0])
+        return [normalized] if normalized else []
+    
+    # Multiple words - check if they're all potential sentiment words
+    # If so, treat each as a separate label
+    potential_labels = []
+    for word in words:
+        normalized = _normalize_label(word)
+        if normalized:
+            # Check if it looks like a sentiment word
+            if _classify_label(normalized) is not None:
+                potential_labels.append(normalized)
+            elif len(normalized) <= 15:  # Reasonable length for a sentiment label
+                potential_labels.append(normalized)
+    
+    if potential_labels:
+        return potential_labels
+    
+    # Fallback: treat entire text as one label
+    normalized = _normalize_label(text)
+    return [normalized] if normalized else []
 
 
 def _compute_tone_rollup(labels: List[str]) -> str:
@@ -329,6 +360,22 @@ def parse_and_align_sentiments(
     
     text = sentiments_raw.strip()
     
+    # If text is a single word that looks like a sentiment, treat it as such
+    # This handles cases where sentiments_raw is just "positive", "negative", etc.
+    single_word_match = re.match(r'^([a-zA-Z]+)$', text)
+    if single_word_match:
+        single_word = _normalize_label(single_word_match.group(1))
+        classification = _classify_label(single_word)
+        if classification:
+            # Apply to all quotes (or first quote if we want to be conservative)
+            tone_rollup = classification if classification != 'neutral' else 'neutral'
+            return [{
+                'quote_index': block['quote_index'],
+                'labels': [single_word],
+                'tone_rollup': tone_rollup,
+                'alignment_confidence': 0.5  # Moderate confidence for single word
+            } for block in quote_blocks]
+    
     # Try to parse as numbered sentiments
     numbered_sentiments = _parse_numbered_sentiments(text)
     
@@ -377,8 +424,9 @@ def parse_and_align_sentiments(
         quote_indices = [block['quote_index'] for block in quote_blocks]
         quotes_are_numbered = all(isinstance(idx, int) and idx > 0 for idx in quote_indices)
         
+        # Try to align flat list to quotes (one-to-one if counts match)
         if quotes_are_numbered and len(flat_labels) == len(quote_blocks):
-            # Try to align flat list to numbered quotes (one-to-one)
+            # Perfect match - align one-to-one
             sentiment_blocks = []
             for i, quote_block in enumerate(quote_blocks):
                 if i < len(flat_labels):
@@ -394,17 +442,48 @@ def parse_and_align_sentiments(
                     'alignment_confidence': 0.7  # Moderate confidence for positional alignment
                 })
             return sentiment_blocks
-        else:
-            # Attach all labels to first quote block with low confidence
-            if quote_blocks:
-                first_quote_index = quote_blocks[0]['quote_index']
-                tone_rollup = _compute_tone_rollup(flat_labels)
-                return [{
-                    'quote_index': first_quote_index,
-                    'labels': flat_labels,
+        elif len(flat_labels) == len(quote_blocks):
+            # Counts match but quotes not numbered - still try positional alignment
+            sentiment_blocks = []
+            for i, quote_block in enumerate(quote_blocks):
+                if i < len(flat_labels):
+                    labels = [flat_labels[i]]
+                else:
+                    labels = []
+                
+                tone_rollup = _compute_tone_rollup(labels)
+                sentiment_blocks.append({
+                    'quote_index': quote_block['quote_index'],
+                    'labels': labels,
                     'tone_rollup': tone_rollup,
-                    'alignment_confidence': 0.3  # Low confidence for mismatch
-                }]
+                    'alignment_confidence': 0.6  # Slightly lower confidence for non-numbered
+                })
+            return sentiment_blocks
+        elif len(flat_labels) > 0:
+            # Counts don't match - distribute labels across quotes
+            # Try to assign one label per quote, cycling if needed
+            sentiment_blocks = []
+            for i, quote_block in enumerate(quote_blocks):
+                # Cycle through labels if we have fewer labels than quotes
+                label_idx = i % len(flat_labels)
+                labels = [flat_labels[label_idx]]
+                
+                tone_rollup = _compute_tone_rollup(labels)
+                sentiment_blocks.append({
+                    'quote_index': quote_block['quote_index'],
+                    'labels': labels,
+                    'tone_rollup': tone_rollup,
+                    'alignment_confidence': 0.4  # Lower confidence for mismatched counts
+                })
+            return sentiment_blocks
+        else:
+            # No labels found - return unknown for all quotes
+            return [{
+                'quote_index': block['quote_index'],
+                'labels': [],
+                'tone_rollup': 'unknown',
+                'alignment_confidence': 0.0
+            } for block in quote_blocks]
     
     # No sentiments found - return unknown for all quotes
     return [{
