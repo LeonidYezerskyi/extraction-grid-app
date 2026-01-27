@@ -666,27 +666,40 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     selected_ids = set(current_selected)
     
     # Build prioritized list: selected first, then top N, then others
+    # CRITICAL: Always include ALL selected topics first (even if they exceed MAX_DROPDOWN_ITEMS)
     prioritized_topics = []
-    prioritized_topics.extend([tid for tid in current_selected if tid in available_topic_ids])
+    # First: all selected topics (must be included to avoid errors)
+    selected_topics_list = [tid for tid in current_selected if tid in available_topic_ids]
+    prioritized_topics.extend(selected_topics_list)
+    # Second: top N topics that aren't selected
     prioritized_topics.extend([tid for tid in available_topic_ids if tid in top_n_ids and tid not in selected_ids])
+    # Third: other topics
     prioritized_topics.extend([tid for tid in available_topic_ids if tid not in top_n_ids and tid not in selected_ids])
     
-    # Limit to max items for performance
+    # Limit to max items for performance, but ALWAYS keep all selected topics
+    # If selected topics exceed MAX_DROPDOWN_ITEMS, include all of them anyway
     if len(prioritized_topics) > MAX_DROPDOWN_ITEMS:
-        # Keep selected and top N, then sample from rest
-        keep_topics = prioritized_topics[:top_n + len(selected_ids)]
-        remaining = prioritized_topics[top_n + len(selected_ids):]
-        if remaining:
-            # Sample evenly from remaining
-            step = max(1, len(remaining) // (MAX_DROPDOWN_ITEMS - len(keep_topics)))
-            keep_topics.extend(remaining[::step])
-        prioritized_topics = keep_topics[:MAX_DROPDOWN_ITEMS]
+        selected_count = len(selected_topics_list)
+        if selected_count >= MAX_DROPDOWN_ITEMS:
+            # All selected topics exceed limit - include only them (no choice)
+            prioritized_topics = selected_topics_list
+        else:
+            # Keep all selected topics + fill remaining slots with others
+            remaining_topics = prioritized_topics[selected_count:]
+            remaining_slots = MAX_DROPDOWN_ITEMS - selected_count
+            if remaining_slots > 0 and remaining_topics:
+                prioritized_topics = selected_topics_list + remaining_topics[:remaining_slots]
+            else:
+                prioritized_topics = selected_topics_list
+    
+    # Filter default to only include topics that are in options (safety check)
+    valid_default = [tid for tid in current_selected if tid in prioritized_topics]
     
     # Multi-select for selected topics (with limited options for performance)
     selected = st.sidebar.multiselect(
         "Selected Topics",
         options=prioritized_topics,
-        default=current_selected,
+        default=valid_default,
         key='topic_multiselect',
         max_selections=50  # Limit selections for performance
     )
