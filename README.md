@@ -97,6 +97,15 @@ python tests/acceptance_check.py
 4. **Explore**: Switch to Explore tab for table view
 5. **Export**: Download HTML or Markdown export
 
+## Deployment
+
+### Streamlit Cloud Deployment
+
+- `QUICK_DEPLOY.md` - Quick deployment guide (3 steps)
+- `DEPLOY_STREAMLIT_CLOUD.md` - Detailed deployment instructions
+
+**Important**: Streamlit Cloud deploys through the web interface at https://share.streamlit.io/, not through the local Streamlit interface.
+
 ## Documentation
 
 - `QUICK_START.md` - Quick start guide

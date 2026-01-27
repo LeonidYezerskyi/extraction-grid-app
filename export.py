@@ -98,7 +98,7 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
         }
         h1 {
             color: #1f2937;
-            border-bottom: 3px solid #3b82f6;
+            border-bottom: 3px solid #655CFE;
             padding-bottom: 10px;
             margin-bottom: 30px;
         }
@@ -110,7 +110,7 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
         }
         .takeaway {
             background-color: white;
-            border-left: 4px solid #3b82f6;
+            border-left: 4px solid #655CFE;
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 4px;
@@ -118,7 +118,7 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
         }
         .takeaway-index {
             font-weight: bold;
-            color: #3b82f6;
+            color: #655CFE;
             margin-right: 10px;
         }
         .topic-card {
@@ -164,14 +164,14 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
             display: inline-block;
             margin: 5px 10px 5px 0;
             padding: 4px 8px;
-            background-color: #eff6ff;
-            color: #1e40af;
+            background-color: rgba(101, 92, 254, 0.1);
+            color: #655CFE;
             text-decoration: none;
             border-radius: 4px;
             font-size: 0.85em;
         }
         .receipt-link:hover {
-            background-color: #dbeafe;
+            background-color: rgba(101, 92, 254, 0.2);
         }
         .metadata {
             margin-top: 40px;

@@ -1142,6 +1142,117 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     st.dataframe(df, width='stretch', hide_index=True)
 
 
+def apply_brand_styles():
+    """Apply brand color (#655CFE) to Streamlit UI elements."""
+    brand_color = "#655CFE"
+    brand_color_hover = "#5548E8"  # Slightly darker for hover states
+    
+    st.markdown(f"""
+    <style>
+        /* Brand color: #655CFE */
+        :root {{
+            --brand-color: {brand_color};
+            --brand-color-hover: {brand_color_hover};
+        }}
+        
+        /* Primary buttons */
+        .stButton > button {{
+            background-color: {brand_color};
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }}
+        
+        .stButton > button:hover {{
+            background-color: {brand_color_hover};
+            box-shadow: 0 2px 8px rgba(101, 92, 254, 0.3);
+        }}
+        
+        /* Download buttons */
+        .stDownloadButton > button {{
+            background-color: {brand_color};
+            color: white;
+        }}
+        
+        .stDownloadButton > button:hover {{
+            background-color: {brand_color_hover};
+        }}
+        
+        /* Progress bar */
+        .stProgress > div > div > div {{
+            background-color: {brand_color};
+        }}
+        
+        /* Tabs */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 8px;
+        }}
+        
+        .stTabs [data-baseweb="tab"] {{
+            color: #666;
+            border-bottom: 2px solid transparent;
+        }}
+        
+        .stTabs [aria-selected="true"] {{
+            color: {brand_color};
+            border-bottom-color: {brand_color};
+        }}
+        
+        /* Sidebar headers */
+        .stSidebar [data-testid="stHeader"] {{
+            color: {brand_color};
+        }}
+        
+        /* Links */
+        a {{
+            color: {brand_color};
+        }}
+        
+        a:hover {{
+            color: {brand_color_hover};
+        }}
+        
+        /* Selectbox/Multiselect focus */
+        .stSelectbox > div > div {{
+            border-color: {brand_color};
+        }}
+        
+        /* Slider */
+        .stSlider > div > div > div {{
+            background-color: {brand_color};
+        }}
+        
+        /* File uploader */
+        .stFileUploader > div > div {{
+            border-color: {brand_color};
+        }}
+        
+        /* Metrics */
+        [data-testid="stMetricValue"] {{
+            color: {brand_color};
+        }}
+        
+        /* Expander */
+        .streamlit-expanderHeader {{
+            color: {brand_color};
+        }}
+        
+        /* Info boxes */
+        .stInfo {{
+            border-left: 4px solid {brand_color};
+        }}
+        
+        /* Success messages */
+        .stSuccess {{
+            border-left: 4px solid {brand_color};
+        }}
+    </style>
+    """, unsafe_allow_html=True)
+
+
 def main():
     """Main Streamlit application."""
     st.set_page_config(
@@ -1149,6 +1260,9 @@ def main():
         page_icon="📊",
         layout="wide"
     )
+    
+    # Apply brand styles
+    apply_brand_styles()
     
     st.title("📊 5-Minute Digest")
     
