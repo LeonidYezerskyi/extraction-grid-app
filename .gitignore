@@ -1,5 +1,9 @@
-echo ".venv/" >> .gitignore
-echo "__pycache__/" >> .gitignore
-echo "*.pyc" >> .gitignore
-echo "*.pyo" >> .gitignore
-echo "*.egg-info/" >> .gitignore
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.xlsx
+*.xls
+.DS_Store
+.env

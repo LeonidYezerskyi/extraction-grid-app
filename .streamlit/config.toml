@@ -1,0 +1,15 @@
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = true
+# Optimize for WSL/Windows performance
+fileWatcherType = "poll"  # Better for WSL file system
+port = 8501
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+# Optimize for better performance
+fastReruns = true
+magicEnabled = true
