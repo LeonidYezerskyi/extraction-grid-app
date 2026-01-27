@@ -27,6 +27,7 @@ SESSION_KEYS = {
     'search_query': 'search_query',
     'uploaded_file': 'uploaded_file',
     'file_hash': 'file_hash',
+    'file_bytes': 'file_bytes',
     'canonical_model': 'canonical_model',
     'topic_aggregates': 'topic_aggregates',
     'validation_report': 'validation_report'
@@ -482,59 +483,105 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         if current_file_hash != file_hash:
             # New file uploaded - update hash and process
             st.session_state[SESSION_KEYS['file_hash']] = file_hash
+            st.session_state[SESSION_KEYS['file_bytes']] = bytes_data
             st.session_state[SESSION_KEYS['uploaded_file']] = uploaded_file
             
-            # Validate file is readable first
-            dict_of_dfs_temp, validation_report_temp, _, _ = process_uploaded_file(bytes_data, {})
-            is_valid, error_msg = edge_cases.validate_file_readable(validation_report_temp)
+            # Show loading indicator with progress
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            if not is_valid:
-                st.session_state['validation_error'] = error_msg
+            try:
+                status_text.text("📊 Reading file...")
+                progress_bar.progress(10)
+                
+                # Process file (includes validation)
+                config = {}
+                dict_of_dfs, validation_report, canonical_model, topic_columns = process_uploaded_file(bytes_data, config)
+                
+                # Validate file is readable
+                is_valid, error_msg = edge_cases.validate_file_readable(validation_report)
+                
+                if not is_valid:
+                    st.session_state['validation_error'] = error_msg
+                    st.session_state[SESSION_KEYS['canonical_model']] = None
+                    st.session_state[SESSION_KEYS['topic_aggregates']] = []
+                    progress_bar.empty()
+                    status_text.empty()
+                    return None, [], validation_report
+                
+                status_text.text("🔄 Normalizing data...")
+                progress_bar.progress(40)
+                
+                # Apply participant filtering if patterns exist
+                filter_patterns = st.session_state.get('participant_filter_patterns', [])
+                if filter_patterns:
+                    canonical_model, filtered_ids = edge_cases.filter_participants_by_regex(
+                        canonical_model, filter_patterns
+                    )
+                    if filtered_ids:
+                        st.session_state['filtered_participants'] = list(filtered_ids)
+                
+                status_text.text("📈 Computing scores...")
+                progress_bar.progress(70)
+                
+                # Identify single-sheet and sparse topics
+                single_sheet_topics = edge_cases.identify_single_sheet_topics(
+                    canonical_model, set(topic_columns)
+                )
+                st.session_state['single_sheet_topics'] = single_sheet_topics
+                
+                # Store in session state
+                st.session_state[SESSION_KEYS['canonical_model']] = canonical_model
+                st.session_state[SESSION_KEYS['validation_report']] = validation_report
+                st.session_state['topic_columns'] = topic_columns
+                
+                # Compute scoring with cache
+                topic_aggregates = compute_scoring_with_cache(file_hash, bytes_data, config)
+                
+                status_text.text("✅ Finalizing...")
+                progress_bar.progress(90)
+                
+                # Identify sparse topics
+                sparse_topics = edge_cases.identify_sparse_topics(topic_aggregates)
+                st.session_state['sparse_topics'] = sparse_topics
+                
+                st.session_state[SESSION_KEYS['topic_aggregates']] = topic_aggregates
+                
+                # Reset selection and tracking
+                st.session_state[SESSION_KEYS['selected_topics']] = []
+                st.session_state['previous_top_n'] = None
+                
+                progress_bar.progress(100)
+                status_text.text("✅ File processed successfully!")
+                
+                # Clear progress indicators after brief delay
+                import time
+                time.sleep(0.2)
+                progress_bar.empty()
+                status_text.empty()
+                
+                # Mark that processing is complete - this will trigger auto-refresh
+                st.session_state['_processing_complete'] = True
+                
+            except Exception as e:
+                progress_bar.empty()
+                status_text.empty()
+                st.error(f"❌ Error processing file: {str(e)}")
                 st.session_state[SESSION_KEYS['canonical_model']] = None
                 st.session_state[SESSION_KEYS['topic_aggregates']] = []
-                return None, [], validation_report_temp
-            
-            # Process with caching (config can be empty for now)
-            config = {}
-            dict_of_dfs, validation_report, canonical_model, topic_columns = process_uploaded_file(bytes_data, config)
-            
-            # Apply participant filtering if patterns exist
-            filter_patterns = st.session_state.get('participant_filter_patterns', [])
-            if filter_patterns:
-                canonical_model, filtered_ids = edge_cases.filter_participants_by_regex(
-                    canonical_model, filter_patterns
-                )
-                if filtered_ids:
-                    st.session_state['filtered_participants'] = list(filtered_ids)
-            
-            # Identify single-sheet and sparse topics
-            single_sheet_topics = edge_cases.identify_single_sheet_topics(
-                canonical_model, set(topic_columns)
-            )
-            st.session_state['single_sheet_topics'] = single_sheet_topics
-            
-            # Store in session state
-            st.session_state[SESSION_KEYS['canonical_model']] = canonical_model
-            st.session_state[SESSION_KEYS['validation_report']] = validation_report
-            st.session_state['topic_columns'] = topic_columns
-            
-            # Compute scoring with cache
-            topic_aggregates = compute_scoring_with_cache(file_hash, bytes_data, config)
-            
-            # Identify sparse topics
-            sparse_topics = edge_cases.identify_sparse_topics(topic_aggregates)
-            st.session_state['sparse_topics'] = sparse_topics
-            
-            st.session_state[SESSION_KEYS['topic_aggregates']] = topic_aggregates
-            
-            # Reset selection and tracking
-            st.session_state[SESSION_KEYS['selected_topics']] = []
-            st.session_state['previous_top_n'] = None
+                return None, [], {}
         else:
             # Same file - use cached data from session state
             canonical_model = st.session_state.get(SESSION_KEYS['canonical_model'])
             topic_aggregates = st.session_state.get(SESSION_KEYS['topic_aggregates'], [])
             validation_report = st.session_state.get(SESSION_KEYS['validation_report'], {})
+            
+            # Get bytes_data from session state (file already read)
+            bytes_data = st.session_state.get(SESSION_KEYS['file_bytes'])
+            if bytes_data is None:
+                # Fallback: read file again if bytes not in session state
+                bytes_data = uploaded_file.read()
+                st.session_state[SESSION_KEYS['file_bytes']] = bytes_data
             
             # If missing, recompute from cache
             if canonical_model is None or not topic_aggregates:
@@ -594,6 +641,9 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     # Get available topic IDs
     available_topic_ids = [t['topic_id'] for t in topic_aggregates]
     
+    # Limit options for performance (max 10 items in dropdown)
+    MAX_DROPDOWN_ITEMS = 10
+    
     # Compute selected topics based on behavior rules
     current_selected = st.session_state.get(SESSION_KEYS['selected_topics'], [])
     
@@ -611,29 +661,69 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             st.session_state[SESSION_KEYS['selected_topics']] = new_selected
             current_selected = new_selected
     
-    # Multi-select for selected topics
+    # Filter topics for multiselect - prioritize selected and top N
+    top_n_ids = set([t['topic_id'] for t in topic_aggregates[:top_n]])
+    selected_ids = set(current_selected)
+    
+    # Build prioritized list: selected first, then top N, then others
+    prioritized_topics = []
+    prioritized_topics.extend([tid for tid in current_selected if tid in available_topic_ids])
+    prioritized_topics.extend([tid for tid in available_topic_ids if tid in top_n_ids and tid not in selected_ids])
+    prioritized_topics.extend([tid for tid in available_topic_ids if tid not in top_n_ids and tid not in selected_ids])
+    
+    # Limit to max items for performance
+    if len(prioritized_topics) > MAX_DROPDOWN_ITEMS:
+        # Keep selected and top N, then sample from rest
+        keep_topics = prioritized_topics[:top_n + len(selected_ids)]
+        remaining = prioritized_topics[top_n + len(selected_ids):]
+        if remaining:
+            # Sample evenly from remaining
+            step = max(1, len(remaining) // (MAX_DROPDOWN_ITEMS - len(keep_topics)))
+            keep_topics.extend(remaining[::step])
+        prioritized_topics = keep_topics[:MAX_DROPDOWN_ITEMS]
+    
+    # Multi-select for selected topics (with limited options for performance)
     selected = st.sidebar.multiselect(
         "Selected Topics",
-        options=available_topic_ids,
+        options=prioritized_topics,
         default=current_selected,
-        key='topic_multiselect'
+        key='topic_multiselect',
+        max_selections=50  # Limit selections for performance
     )
     st.session_state[SESSION_KEYS['selected_topics']] = selected
     
-    # Search-add dropdown for topics outside Top N
-    top_n_ids = set([t['topic_id'] for t in topic_aggregates[:top_n]])
+    # Search-add dropdown for topics outside Top N (with search functionality)
     other_topics = [tid for tid in available_topic_ids if tid not in top_n_ids]
     
     if other_topics:
         st.sidebar.subheader("Add Topic")
-        add_topic = st.sidebar.selectbox(
-            "Search and add topic",
-            options=[''] + other_topics,
-            key='add_topic_selectbox'
+        
+        # Add search box for filtering
+        search_query = st.sidebar.text_input(
+            "🔍 Search topic...",
+            value="",
+            key='topic_search_input',
+            help="Type to filter topics"
         )
-        if add_topic and add_topic not in st.session_state[SESSION_KEYS['selected_topics']]:
-            st.session_state[SESSION_KEYS['selected_topics']].append(add_topic)
-            st.rerun()
+        
+        # Filter topics by search query
+        if search_query:
+            filtered_topics = [tid for tid in other_topics if search_query.lower() in tid.lower()]
+        else:
+            # Limit to first 10 for performance when no search
+            filtered_topics = other_topics[:10]
+        
+        if filtered_topics:
+            add_topic = st.sidebar.selectbox(
+                "Select topic to add",
+                options=[''] + filtered_topics,
+                key='add_topic_selectbox'
+            )
+            if add_topic and add_topic not in st.session_state[SESSION_KEYS['selected_topics']]:
+                st.session_state[SESSION_KEYS['selected_topics']].append(add_topic)
+                st.rerun()
+        else:
+            st.sidebar.caption("No topics found matching your search")
     
     # Reset and Clear buttons
     col1, col2 = st.sidebar.columns(2)
@@ -720,7 +810,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             data=html_content,
             file_name="digest.html",
             mime="text/html",
-            use_container_width=True
+            width='stretch'
         )
         
         md_content = export.export_to_markdown(digest_artifact)
@@ -729,11 +819,35 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             data=md_content,
             file_name="digest.md",
             mime="text/markdown",
-            use_container_width=True
+            width='stretch'
         )
     
     return canonical_model, topic_aggregates, validation_report
 
+
+@st.cache_data(show_spinner=False)
+def _format_matched_sheets(matched_sheets: Dict) -> str:
+    """Format matched sheets as simple text for performance."""
+    if not matched_sheets:
+        return ""
+    lines = []
+    for role, sheet_name in matched_sheets.items():
+        lines.append(f"✓ {role}: {sheet_name}")
+    return "\n".join(lines)
+
+@st.cache_data(show_spinner=False)
+def _format_unmatched_sheets(unmatched_sheets: List) -> str:
+    """Format unmatched sheets as simple text for performance."""
+    if not unmatched_sheets:
+        return ""
+    return "\n".join([f"  - {name}" for name in unmatched_sheets])
+
+@st.cache_data(show_spinner=False)
+def _format_warnings(warnings: List) -> str:
+    """Format warnings as simple text for performance."""
+    if not warnings:
+        return ""
+    return "\n".join([f"⚠️ {w}" for w in warnings])
 
 def render_validation_stats(validation_report: Dict, canonical_model):
     """Render validation report and dataset stats."""
@@ -752,12 +866,31 @@ def render_validation_stats(validation_report: Dict, canonical_model):
         matched = len(validation_report.get('matched_sheets', {}))
         st.metric("Matched Sheets", f"{matched}/3")
     
-    # Validation warnings
+    # Show matched sheets info (simplified for performance)
+    matched_sheets = validation_report.get('matched_sheets', {})
+    if matched_sheets:
+        with st.expander("📋 Matched Sheets Details", expanded=False):
+            # Use simple text instead of multiple st.success calls
+            matched_text = _format_matched_sheets(matched_sheets)
+            st.text(matched_text)
+    
+    # Show unmatched sheets info (simplified for performance)
+    unmatched_sheets = validation_report.get('unmatched_sheets', [])
+    if unmatched_sheets:
+        with st.expander("📄 Unmatched Sheets (not recognized)", expanded=False):
+            st.info("These sheets were found but couldn't be matched to expected roles (summary, quotes, sentiments):")
+            # Use simple text instead of multiple st.write calls
+            unmatched_text = _format_unmatched_sheets(unmatched_sheets)
+            st.text(unmatched_text)
+            st.caption("💡 Tip: Rename sheets to include 'summary', 'quotes', or 'sentiments' in their names")
+    
+    # Validation warnings (simplified for performance)
     warnings = validation_report.get('warnings', [])
     if warnings:
         with st.expander("⚠️ Validation Warnings", expanded=False):
-            for warning in warnings:
-                st.warning(warning)
+            # Use simple text instead of multiple st.warning calls
+            warnings_text = _format_warnings(warnings)
+            st.text(warnings_text)
 
 
 def render_takeaways(digest_artifact: Dict[str, Any]):
@@ -849,7 +982,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
     
     for card in topic_cards:
         topic_id = card.get('topic_id', '')
-        topic_oneliner_full = card.get('topic_one_liner', '')
+        topic_oneliner_full = card.get('topic_one_liner') or ''
         topic_oneliner_truncated = render.format_topic_oneliner(topic_oneliner_full)
         topic_oneliner_is_truncated = len(topic_oneliner_full) > render.TOPIC_ONELINER_MAX
         
@@ -993,7 +1126,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
         })
     
     df = pd.DataFrame(df_data)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width='stretch', hide_index=True)
 
 
 def main():
@@ -1008,6 +1141,12 @@ def main():
     
     # Initialize session state
     initialize_session_state()
+    
+    # Check if file processing just completed and trigger refresh
+    if st.session_state.get('_processing_complete', False):
+        st.session_state['_processing_complete'] = False
+        # Use a small delay to ensure state is saved, then refresh
+        st.rerun()
     
     # Get canonical model and topic aggregates from session state or process file
     canonical_model = st.session_state.get(SESSION_KEYS['canonical_model'])

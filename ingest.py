@@ -35,18 +35,57 @@ def _fuzzy_match_sheet_name(sheet_name: str, target_roles: List[str]) -> Optiona
     """
     sheet_lower = sheet_name.lower().strip()
     
+    # Mapping of common variations to roles
+    role_keywords = {
+        'summary': ['summary', 'summaries', 'summ', 'overview', 'overviews', 'sum', 'sums', 'answers', 'answer', 'responses', 'response'],
+        'quotes': ['quotes', 'quote', 'quotations', 'quotation', 'text', 'comments', 'comment', 'verbatim', 'verbatims', 'raw', 'raws'],
+        'sentiments': ['sentiment', 'sentiments', 'sent', 'feeling', 'feelings', 'emotion', 'emotions', 'tone', 'tones', 'affect', 'affects']
+    }
+    
     # First try exact lowercase match
     for role in target_roles:
         if sheet_lower == role:
             return role
+    
+    # Try substring match with keywords (more flexible)
+    # Priority: sentiments > quotes > summary (to handle combined names like "Quotes sentiments")
+    priority_order = ['sentiments', 'quotes', 'summary']
+    for role in priority_order:
+        keywords = role_keywords.get(role, [role])
+        for keyword in keywords:
+            # Check if keyword appears as whole word or substring
+            if keyword in sheet_lower:
+                return role
+    
+    # Also check remaining roles (if not in priority order)
+    for role in target_roles:
+        if role not in priority_order:
+            keywords = role_keywords.get(role, [role])
+            for keyword in keywords:
+                if keyword in sheet_lower:
+                    return role
     
     # Try substring match (target role in sheet name or vice versa)
     for role in target_roles:
         if role in sheet_lower or sheet_lower in role:
             return role
     
-    # Try fuzzy matching with difflib
-    matches = get_close_matches(sheet_lower, target_roles, n=1, cutoff=0.6)
+    # Try removing common prefixes/suffixes and matching
+    # Remove common sheet name patterns like "Sheet1", "Data", etc.
+    cleaned = sheet_lower
+    for prefix in ['sheet', 'data', 'table', 'tab', 'page']:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip()
+        if cleaned.endswith(prefix):
+            cleaned = cleaned[:-len(prefix)].strip()
+    
+    # Try matching cleaned name
+    for role in target_roles:
+        if role in cleaned or cleaned in role:
+            return role
+    
+    # Try fuzzy matching with difflib (lower cutoff for better matching)
+    matches = get_close_matches(sheet_lower, target_roles, n=1, cutoff=0.4)
     if matches:
         return matches[0]
     
@@ -192,13 +231,17 @@ def read_workbook(excel_bytes: bytes) -> Tuple[Dict[str, Optional[pd.DataFrame]]
             result_dfs[role] = None
     
     # Identify missing sheets
+    core_sheets = ['summary']  # At minimum, summary is required
     for role in target_roles:
         if role not in validation_report['matched_sheets']:
             validation_report['missing_sheets'].append(role)
-            validation_report['warnings'].append(f"Required sheet '{role}' not found or could not be matched")
+            # Only show "Required" for core sheets, others are optional
+            if role in core_sheets:
+                validation_report['warnings'].append(f"Required sheet '{role}' not found or could not be matched")
+            else:
+                validation_report['warnings'].append(f"Optional sheet '{role}' not found or could not be matched")
     
     # Check if core sheets are missing
-    core_sheets = ['summary']  # At minimum, summary is required
     missing_core = [s for s in core_sheets if s in validation_report['missing_sheets']]
     if missing_core:
         validation_report['error'] = f"Core required sheets missing: {', '.join(missing_core)}"
