@@ -39,12 +39,40 @@ def _compute_sentiment_mix(evidence_cells, topic_id: str) -> Dict[str, int]:
         if not quote_blocks:
             continue
         
+        # Parse and align sentiments
         sentiment_blocks = parse_sentiment.parse_and_align_sentiments(
             evidence_cell.sentiments_raw, quote_blocks
         )
         
+        # Count sentiments from all blocks
         for sentiment_block in sentiment_blocks:
             tone = sentiment_block.get('tone_rollup', 'unknown')
+            labels = sentiment_block.get('labels', [])
+            
+            # If tone is unknown but we have labels, try to reclassify them
+            # This helps catch cases where labels weren't properly classified
+            if tone == 'unknown' and labels:
+                # Check labels for sentiment keywords
+                label_text = ' '.join(labels).lower()
+                has_positive_keywords = any(kw in label_text for kw in 
+                    ['positive', 'pos', 'good', 'favorable', 'optimistic', 'happy', 'satisfied', 
+                     'yes', 'agree', 'support', 'pro', 'like', 'love', 'excellent', 'great'])
+                has_negative_keywords = any(kw in label_text for kw in 
+                    ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
+                     'no', 'disagree', 'against', 'oppose', 'con', 'dislike', 'hate', 'poor', 'terrible'])
+                has_neutral_keywords = any(kw in label_text for kw in 
+                    ['neutral', 'neut', 'none', 'n/a', 'na', 'unknown', 'unclear', 'mixed', 'both'])
+                
+                # Recompute tone based on keywords found
+                if has_positive_keywords and has_negative_keywords:
+                    tone = 'mixed'
+                elif has_positive_keywords and not has_negative_keywords:
+                    tone = 'positive'
+                elif has_negative_keywords and not has_positive_keywords:
+                    tone = 'negative'
+                elif has_neutral_keywords and not has_positive_keywords and not has_negative_keywords:
+                    tone = 'neutral'
+            
             if tone in sentiment_counts:
                 sentiment_counts[tone] += 1
             else:

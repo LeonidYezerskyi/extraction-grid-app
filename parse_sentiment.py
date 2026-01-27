@@ -4,10 +4,24 @@ import re
 from typing import List, Dict, Optional, Any, Tuple
 
 
-# Sentiment label mappings
-POSITIVE_LABELS = {'positive', 'pos', '+', 'good', 'favorable', 'optimistic', 'happy', 'satisfied'}
-NEGATIVE_LABELS = {'negative', 'neg', '-', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied'}
-NEUTRAL_LABELS = {'neutral', 'neut', '0', 'none', 'indifferent', 'mixed-neutral'}
+# Sentiment label mappings - expanded to handle more variations
+POSITIVE_LABELS = {
+    'positive', 'pos', '+', 'good', 'favorable', 'optimistic', 'happy', 'satisfied',
+    'p', 'pos.', 'positive.', 'good.', 'favorable.', 'optimistic.', 'happy.', 'satisfied.',
+    'yes', 'y', 'agree', 'agreement', 'support', 'supportive', 'pro', 'liked', 'like',
+    'excellent', 'great', 'wonderful', 'amazing', 'fantastic', 'love', 'loved'
+}
+NEGATIVE_LABELS = {
+    'negative', 'neg', '-', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
+    'n', 'neg.', 'negative.', 'bad.', 'unfavorable.', 'pessimistic.', 'sad.', 'dissatisfied.',
+    'no', 'disagree', 'disagreement', 'against', 'oppose', 'opposed', 'con', 'disliked', 'dislike',
+    'poor', 'terrible', 'awful', 'hate', 'hated', 'frustrated', 'angry', 'disappointed'
+}
+NEUTRAL_LABELS = {
+    'neutral', 'neut', '0', 'none', 'indifferent', 'mixed-neutral',
+    'n/a', 'na', 'n.a.', 'not applicable', 'not available', 'unknown', 'unclear',
+    'mixed', 'both', 'ambivalent', 'uncertain', 'unsure', 'maybe', 'perhaps'
+}
 
 
 def _normalize_label(label: str) -> str:
@@ -42,12 +56,21 @@ def _classify_label(label: str) -> Optional[str]:
     elif normalized in NEUTRAL_LABELS:
         return 'neutral'
     else:
-        # Check if label contains positive/negative keywords
-        if any(word in normalized for word in ['positive', 'pos', 'good', 'favorable']):
+        # Check if label contains positive/negative keywords (more comprehensive)
+        positive_keywords = ['positive', 'pos', 'good', 'favorable', 'optimistic', 'happy', 'satisfied', 
+                            'yes', 'agree', 'support', 'pro', 'like', 'love', 'excellent', 'great', 'wonderful']
+        negative_keywords = ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
+                            'no', 'disagree', 'against', 'oppose', 'con', 'dislike', 'hate', 'poor', 'terrible', 'awful']
+        neutral_keywords = ['neutral', 'neut', 'none', 'n/a', 'na', 'unknown', 'unclear', 'mixed', 'both', 'ambivalent']
+        
+        # Check for positive keywords
+        if any(keyword in normalized for keyword in positive_keywords):
             return 'positive'
-        elif any(word in normalized for word in ['negative', 'neg', 'bad', 'unfavorable']):
+        # Check for negative keywords
+        elif any(keyword in normalized for keyword in negative_keywords):
             return 'negative'
-        elif any(word in normalized for word in ['neutral', 'neut', 'none']):
+        # Check for neutral keywords
+        elif any(keyword in normalized for keyword in neutral_keywords):
             return 'neutral'
     
     return None
@@ -56,6 +79,14 @@ def _classify_label(label: str) -> Optional[str]:
 def _parse_numbered_sentiments(text: str) -> Optional[Dict[int, List[str]]]:
     """
     Parse numbered sentiments from text (e.g., "1: positive; 2: negative").
+    
+    Supports multiple formats:
+    - 1: positive, 2: negative
+    - 1. positive; 2. negative
+    - (1) positive, (2) negative
+    - 1) positive; 2) negative
+    - Quote 1: positive; Quote 2: negative
+    - Q1: positive; Q2: negative
     
     Args:
         text: Text containing numbered sentiments
@@ -66,13 +97,15 @@ def _parse_numbered_sentiments(text: str) -> Optional[Dict[int, List[str]]]:
     if not text or not text.strip():
         return None
     
-    # Patterns for numbered sentiments:
+    # Patterns for numbered sentiments (more flexible):
     # 1: positive, 2: negative
     # 1. positive, 2. negative
     # (1) positive, (2) negative
     # 1) positive, 2) negative
+    # Quote 1: positive; Quote 2: negative
+    # Q1: positive; Q2: negative
     patterns = [
-        (r'(\d+)[:\.]\s*([^;,\n]+)', r'(\d+)[:\.]\s*'),  # 1: label or 1. label
+        (r'(?:quote\s*|q\s*)?(\d+)[:\.]\s*([^;,\n]+)', r'(?:quote\s*|q\s*)?(\d+)[:\.]\s*'),  # 1: label, Q1: label, Quote 1: label
         (r'\((\d+)\)\s*([^;,\n]+)', r'\((\d+)\)\s*'),  # (1) label
         (r'(\d+)\)\s*([^;,\n]+)', r'(\d+)\)\s*'),  # 1) label
     ]
@@ -80,21 +113,36 @@ def _parse_numbered_sentiments(text: str) -> Optional[Dict[int, List[str]]]:
     numbered_sentiments = {}
     
     for pattern, split_pattern in patterns:
-        matches = list(re.finditer(pattern, text))
+        matches = list(re.finditer(pattern, text, re.IGNORECASE))
         
         if len(matches) >= 1:
             for match in matches:
                 quote_index = int(match.group(1))
                 label_text = match.group(2).strip()
                 
-                # Parse labels (may be comma-separated or semicolon-separated)
-                labels = re.split(r'[;,\n]', label_text)
-                labels = [_normalize_label(l) for l in labels if l.strip()]
+                # Parse labels (may be comma-separated, semicolon-separated, or space-separated)
+                # First try splitting by semicolon, then comma, then newline
+                if ';' in label_text:
+                    labels = re.split(r'[;]', label_text)
+                elif ',' in label_text:
+                    labels = re.split(r'[,]', label_text)
+                elif '\n' in label_text:
+                    labels = re.split(r'[\n]', label_text)
+                else:
+                    # Single label, but check if it contains multiple words that might be separate labels
+                    labels = [label_text]
                 
-                if labels:
+                # Normalize and clean labels
+                cleaned_labels = []
+                for label in labels:
+                    normalized = _normalize_label(label)
+                    if normalized and normalized not in ['and', 'or', '&']:  # Skip common connectors
+                        cleaned_labels.append(normalized)
+                
+                if cleaned_labels:
                     if quote_index not in numbered_sentiments:
                         numbered_sentiments[quote_index] = []
-                    numbered_sentiments[quote_index].extend(labels)
+                    numbered_sentiments[quote_index].extend(cleaned_labels)
             
             if numbered_sentiments:
                 return numbered_sentiments
