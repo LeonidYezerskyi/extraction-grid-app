@@ -5,6 +5,7 @@ from typing import List, Dict, Optional, Any, Tuple
 
 
 # Sentiment label mappings - expanded to handle more variations
+# Includes common emotional labels found in sentiment analysis
 POSITIVE_LABELS = {
     'positive', 'pos', '+', 'good', 'favorable', 'optimistic', 'happy', 'satisfied',
     'p', 'pos.', 'positive.', 'good.', 'favorable.', 'optimistic.', 'happy.', 'satisfied.',
@@ -12,7 +13,13 @@ POSITIVE_LABELS = {
     'excellent', 'great', 'wonderful', 'amazing', 'fantastic', 'love', 'loved',
     '1', '+1', 'pos1', 'positive1',  # Numeric codes
     'upbeat', 'cheerful', 'pleased', 'content', 'grateful', 'appreciative',
-    'enthusiastic', 'excited', 'hopeful', 'confident', 'optimistic'
+    'enthusiastic', 'excited', 'hopeful', 'confident', 'optimistic',
+    # Additional positive emotions
+    'joy', 'joyful', 'delighted', 'thrilled', 'ecstatic', 'elated', 'blissful',
+    'proud', 'satisfaction', 'contentment', 'fulfillment', 'gratitude',
+    'admiration', 'appreciation', 'approval', 'endorsement', 'encouragement',
+    'optimism', 'hope', 'confidence', 'trust', 'faith', 'belief',
+    'enjoyment', 'pleasure', 'delight', 'fun', 'entertainment', 'amusement'
 }
 NEGATIVE_LABELS = {
     'negative', 'neg', '-', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
@@ -21,7 +28,24 @@ NEGATIVE_LABELS = {
     'poor', 'terrible', 'awful', 'hate', 'hated', 'frustrated', 'angry', 'disappointed',
     '2', '-1', 'neg1', 'negative1',  # Numeric codes
     'upset', 'worried', 'concerned', 'disappointed', 'frustrated', 'annoyed',
-    'skeptical', 'doubtful', 'pessimistic', 'critical', 'unhappy', 'uncomfortable'
+    'skeptical', 'doubtful', 'pessimistic', 'critical', 'unhappy', 'uncomfortable',
+    # Additional negative emotions (including Annoyance)
+    'annoyance', 'annoyed', 'irritated', 'irritation', 'aggravated', 'bothered',
+    'anger', 'angry', 'mad', 'furious', 'rage', 'enraged', 'outraged',
+    'frustration', 'frustrated', 'exasperated', 'aggravated',
+    'disgust', 'disgusted', 'revolted', 'repulsed', 'sickened',
+    'fear', 'afraid', 'scared', 'frightened', 'terrified', 'anxious', 'anxiety',
+    'sadness', 'sad', 'depressed', 'depression', 'melancholy', 'sorrow', 'grief',
+    'disappointment', 'disappointed', 'let down', 'disillusioned',
+    'shame', 'ashamed', 'embarrassed', 'humiliated', 'guilt', 'guilty',
+    'contempt', 'contemptuous', 'scorn', 'disdain', 'disrespect',
+    'worry', 'worried', 'concern', 'concerned', 'uneasy', 'nervous',
+    'stress', 'stressed', 'overwhelmed', 'pressure', 'tension',
+    'confusion', 'confused', 'bewildered', 'perplexed', 'puzzled',
+    'boredom', 'bored', 'uninterested', 'indifferent', 'apathetic',
+    'loneliness', 'lonely', 'isolated', 'abandoned', 'neglected',
+    'jealousy', 'jealous', 'envy', 'envious', 'resentment', 'resentful',
+    'regret', 'regretful', 'remorse', 'remorseful', 'guilt'
 }
 NEUTRAL_LABELS = {
     'neutral', 'neut', '0', 'none', 'indifferent', 'mixed-neutral',
@@ -29,7 +53,13 @@ NEUTRAL_LABELS = {
     'mixed', 'both', 'ambivalent', 'uncertain', 'unsure', 'maybe', 'perhaps',
     '3', '0', 'neut1', 'neutral1',  # Numeric codes
     'ok', 'okay', 'fine', 'average', 'moderate', 'so-so', 'meh',
-    'balanced', 'even', 'equal', 'similar', 'comparable'
+    'balanced', 'even', 'equal', 'similar', 'comparable',
+    # Additional neutral states
+    'calm', 'peaceful', 'serene', 'tranquil', 'relaxed', 'composed',
+    'curious', 'curiosity', 'interested', 'inquisitive', 'wondering',
+    'surprised', 'surprise', 'astonished', 'amazed', 'shocked',
+    'contemplative', 'thoughtful', 'reflective', 'pensive', 'meditative',
+    'accepting', 'acceptance', 'resigned', 'tolerant', 'understanding'
 }
 
 
@@ -65,18 +95,27 @@ def _classify_label(label: str) -> Optional[str]:
     elif normalized in NEUTRAL_LABELS:
         return 'neutral'
     else:
-        # Check if label contains positive/negative keywords (more comprehensive)
+        # Check if label contains positive/negative keywords (comprehensive list)
         positive_keywords = ['positive', 'pos', 'good', 'favorable', 'optimistic', 'happy', 'satisfied', 
                             'yes', 'agree', 'support', 'pro', 'like', 'love', 'excellent', 'great', 'wonderful',
                             'upbeat', 'cheerful', 'pleased', 'content', 'grateful', 'appreciative',
-                            'enthusiastic', 'excited', 'hopeful', 'confident']
+                            'enthusiastic', 'excited', 'hopeful', 'confident', 'joy', 'joyful', 'delighted',
+                            'thrilled', 'proud', 'satisfaction', 'admiration', 'appreciation', 'approval',
+                            'optimism', 'hope', 'trust', 'enjoyment', 'pleasure', 'delight', 'fun']
         negative_keywords = ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic', 'sad', 'dissatisfied',
                             'no', 'disagree', 'against', 'oppose', 'con', 'dislike', 'hate', 'poor', 'terrible', 'awful',
                             'upset', 'worried', 'concerned', 'disappointed', 'frustrated', 'annoyed',
-                            'skeptical', 'doubtful', 'critical', 'unhappy', 'uncomfortable']
+                            'skeptical', 'doubtful', 'critical', 'unhappy', 'uncomfortable',
+                            'annoyance', 'irritated', 'irritation', 'aggravated', 'bothered', 'anger', 'angry',
+                            'mad', 'furious', 'frustration', 'disgust', 'disgusted', 'fear', 'afraid', 'scared',
+                            'sadness', 'depressed', 'shame', 'ashamed', 'contempt', 'worry', 'stress', 'stressed',
+                            'confusion', 'confused', 'boredom', 'bored', 'loneliness', 'lonely', 'jealousy', 'jealous',
+                            'regret', 'regretful']
         neutral_keywords = ['neutral', 'neut', 'none', 'n/a', 'na', 'unknown', 'unclear', 'mixed', 'both', 'ambivalent',
                            'ok', 'okay', 'fine', 'average', 'moderate', 'so-so', 'meh',
-                           'balanced', 'even', 'equal', 'similar', 'comparable']
+                           'balanced', 'even', 'equal', 'similar', 'comparable', 'calm', 'peaceful', 'serene',
+                           'curious', 'curiosity', 'surprised', 'surprise', 'contemplative', 'thoughtful',
+                           'accepting', 'acceptance']
         
         # Check for positive keywords (substring match)
         if any(keyword in normalized for keyword in positive_keywords):

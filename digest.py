@@ -61,20 +61,35 @@ def _compute_sentiment_mix(evidence_cells, topic_id: str) -> Dict[str, int]:
                     if classification:
                         classifications.append(classification)
                     else:
-                        # Try substring matching
+                        # Try substring matching with comprehensive keyword lists
                         label_lower = label.lower()
+                        # Positive keywords
                         if any(kw in label_lower for kw in ['positive', 'pos', 'good', 'favorable', 'optimistic', 
                                                            'happy', 'satisfied', 'yes', 'agree', 'support', 'pro', 
                                                            'like', 'love', 'excellent', 'great', 'wonderful', 'upbeat', 
-                                                           'cheerful', 'pleased', 'enthusiastic', 'excited', 'hopeful']):
+                                                           'cheerful', 'pleased', 'enthusiastic', 'excited', 'hopeful',
+                                                           'joy', 'joyful', 'delighted', 'thrilled', 'proud', 'grateful',
+                                                           'admiration', 'appreciation', 'approval', 'optimism', 'trust',
+                                                           'enjoyment', 'pleasure', 'delight', 'fun', 'content']):
                             classifications.append('positive')
+                        # Negative keywords (including annoyance and other emotions)
                         elif any(kw in label_lower for kw in ['negative', 'neg', 'bad', 'unfavorable', 'pessimistic',
                                                              'sad', 'dissatisfied', 'no', 'disagree', 'against', 'oppose',
                                                              'con', 'dislike', 'hate', 'poor', 'terrible', 'awful',
-                                                             'upset', 'worried', 'concerned', 'frustrated', 'annoyed']):
+                                                             'upset', 'worried', 'concerned', 'frustrated', 'annoyed',
+                                                             'annoyance', 'irritated', 'irritation', 'aggravated', 'bothered',
+                                                             'anger', 'angry', 'mad', 'furious', 'disgust', 'disgusted',
+                                                             'fear', 'afraid', 'scared', 'sadness', 'depressed', 'shame',
+                                                             'ashamed', 'contempt', 'worry', 'stress', 'stressed', 'confusion',
+                                                             'confused', 'boredom', 'bored', 'loneliness', 'lonely', 'jealousy',
+                                                             'jealous', 'regret', 'regretful', 'skeptical', 'doubtful', 'critical']):
                             classifications.append('negative')
+                        # Neutral keywords
                         elif any(kw in label_lower for kw in ['neutral', 'neut', 'none', 'n/a', 'na', 'unclear',
-                                                             'mixed', 'both', 'ok', 'okay', 'fine', 'average', 'moderate']):
+                                                             'mixed', 'both', 'ok', 'okay', 'fine', 'average', 'moderate',
+                                                             'calm', 'peaceful', 'serene', 'curious', 'curiosity', 'surprised',
+                                                             'surprise', 'contemplative', 'thoughtful', 'accepting', 'acceptance',
+                                                             'balanced', 'even', 'equal', 'similar', 'comparable']):
                             classifications.append('neutral')
                 
                 # Recompute tone from classifications
