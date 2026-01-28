@@ -465,7 +465,7 @@ def clear_selection() -> List[str]:
 
 def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     """Render sidebar with all controls."""
-    st.sidebar.header("Controls")
+    st.sidebar.markdown("### Controls")
     
     # File uploader
     uploaded_file = st.sidebar.file_uploader(
@@ -1533,44 +1533,61 @@ def apply_brand_styles():
             color: white !important;
         }}
         
-        /* Compact Sidebar */
+        /* Ultra Compact Sidebar */
         .stSidebar {{
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }}
         
         .stSidebar [data-testid="stHeader"] {{
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
-            padding-bottom: 0.25rem;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+            padding-bottom: 0.15rem;
+            margin-top: 0.25rem;
         }}
         
         .stSidebar [data-testid="stSubheader"] {{
-            font-size: 0.95rem;
-            margin-top: 0.75rem;
-            margin-bottom: 0.5rem;
-            padding-bottom: 0.25rem;
+            font-size: 0.9rem;
+            margin-top: 0.4rem;
+            margin-bottom: 0.3rem;
+            padding-bottom: 0.15rem;
         }}
         
         .stSidebar [data-testid="stMarkdownContainer"] {{
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.15rem;
+            margin-top: 0.15rem;
         }}
         
         .stSidebar .stDivider {{
-            margin: 0.5rem 0;
+            margin: 0.3rem 0;
         }}
         
-        /* Compact buttons */
+        /* Reduce spacing in all sidebar elements */
+        .stSidebar > div {{
+            padding-top: 0.3rem;
+            padding-bottom: 0.3rem;
+        }}
+        
+        .stSidebar [data-testid="stVerticalBlock"] {{
+            gap: 0.3rem;
+        }}
+        
+        .stSidebar [data-testid="stHorizontalBlock"] {{
+            gap: 0.3rem;
+        }}
+        
+        /* Ultra compact buttons */
         .stSidebar .stButton > button {{
             background-color: {brand_color};
             color: white;
             border: none;
-            border-radius: 0.25rem;
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
+            border-radius: 0.2rem;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.8rem;
             font-weight: 500;
             transition: all 0.3s;
             height: auto;
-            min-height: 2rem;
+            min-height: 1.75rem;
+            margin: 0.15rem 0;
         }}
         
         .stSidebar .stButton > button:hover {{
@@ -1578,34 +1595,42 @@ def apply_brand_styles():
             box-shadow: 0 2px 8px rgba(101, 92, 254, 0.3);
         }}
         
-        /* Compact download buttons */
+        /* Ultra compact download buttons */
         .stSidebar .stDownloadButton > button {{
             background-color: {brand_color};
             color: white;
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.8rem;
             height: auto;
-            min-height: 2rem;
+            min-height: 1.75rem;
+            margin: 0.15rem 0;
         }}
         
         .stSidebar .stDownloadButton > button:hover {{
             background-color: {brand_color_hover};
         }}
         
-        /* Compact inputs */
+        /* Ultra compact inputs */
         .stSidebar input, .stSidebar select {{
-            font-size: 0.85rem;
-            padding: 0.35rem 0.5rem;
+            font-size: 0.8rem;
+            padding: 0.25rem 0.4rem;
+            margin: 0.15rem 0;
         }}
         
         .stSidebar [data-baseweb="select"] {{
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }}
         
-        /* Compact multiselect */
+        /* Ultra compact multiselect */
         .stSidebar [data-baseweb="select"] > div {{
-            padding: 0.35rem 0.5rem;
-            font-size: 0.85rem;
+            padding: 0.25rem 0.4rem;
+            font-size: 0.8rem;
+            margin: 0.15rem 0;
+        }}
+        
+        .stSidebar [data-baseweb="select"] [data-baseweb="input"] {{
+            padding: 0.25rem 0.4rem;
+            min-height: 1.75rem;
         }}
         
         /* Brand color checkboxes - more specific selectors */
@@ -1627,9 +1652,15 @@ def apply_brand_styles():
             color: {brand_color} !important;
         }}
         
-        /* Compact slider with brand color */
+        /* Ultra compact slider with brand color */
         .stSidebar .stSlider {{
-            margin: 0.5rem 0;
+            margin: 0.25rem 0;
+            padding: 0.15rem 0;
+        }}
+        
+        .stSidebar .stSlider label {{
+            font-size: 0.8rem;
+            margin-bottom: 0.15rem;
         }}
         
         .stSidebar .stSlider > div > div > div {{
@@ -1672,20 +1703,71 @@ def apply_brand_styles():
             color: white !important;
         }}
         
-        /* Compact file uploader */
+        /* Ultra compact file uploader */
         .stSidebar .stFileUploader {{
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            margin: 0.15rem 0;
         }}
         
         .stSidebar .stFileUploader > div > div {{
             border-color: {brand_color};
-            padding: 0.5rem;
+            padding: 0.35rem;
         }}
         
-        /* Compact captions */
+        .stSidebar .stFileUploader label {{
+            font-size: 0.8rem;
+        }}
+        
+        /* Ultra compact captions */
         .stSidebar [data-testid="stCaption"] {{
-            font-size: 0.75rem;
-            margin-top: 0.25rem;
+            font-size: 0.7rem;
+            margin-top: 0.15rem;
+            margin-bottom: 0.15rem;
+        }}
+        
+        /* Compact checkbox labels */
+        .stSidebar [data-baseweb="checkbox"] label {{
+            font-size: 0.8rem;
+            margin: 0.15rem 0;
+            padding: 0.15rem 0;
+        }}
+        
+        /* Reduce spacing in columns */
+        .stSidebar [data-testid="column"] {{
+            padding: 0.15rem;
+        }}
+        
+        /* Reduce info box spacing */
+        .stSidebar .stAlert {{
+            padding: 0.4rem 0.6rem;
+            margin: 0.25rem 0;
+            font-size: 0.8rem;
+        }}
+        
+        /* Additional compact spacing */
+        .stSidebar [data-baseweb="base-input"] {{
+            padding: 0.25rem 0.4rem;
+            min-height: 1.75rem;
+        }}
+        
+        .stSidebar [data-baseweb="select"] [data-baseweb="popover"] {{
+            max-height: 200px;
+        }}
+        
+        /* Reduce line height */
+        .stSidebar * {{
+            line-height: 1.3;
+        }}
+        
+        /* Compact multiselect container */
+        .stSidebar [data-baseweb="select"] {{
+            margin: 0.15rem 0;
+        }}
+        
+        /* Remove extra padding from text inputs */
+        .stSidebar input[type="text"] {{
+            padding: 0.25rem 0.4rem !important;
+            min-height: 1.75rem !important;
         }}
         
         /* Remove red error/warning colors */
