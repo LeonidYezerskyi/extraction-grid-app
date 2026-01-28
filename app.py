@@ -1353,15 +1353,27 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     items_per_page = 15
     total_pages = (len(filtered_topics) + items_per_page - 1) // items_per_page
     
+    # Initialize page in session state if not exists
+    if 'explore_page' not in st.session_state:
+        st.session_state['explore_page'] = 1
+    
+    # Reset page if out of bounds
+    if st.session_state['explore_page'] > total_pages:
+        st.session_state['explore_page'] = 1
+    
     if total_pages > 1:
+        # Use session state value and update it
+        current_page = st.session_state.get('explore_page', 1)
         page = st.number_input(
             "Page",
             min_value=1,
             max_value=total_pages,
-            value=1,
-            key='explore_page',
+            value=current_page,
+            key='explore_page_number_input',
             help=f"Showing {items_per_page} topics per page"
         )
+        # Update session state
+        st.session_state['explore_page'] = page
         start_idx = (page - 1) * items_per_page
         end_idx = start_idx + items_per_page
         page_topics = filtered_topics[start_idx:end_idx]
@@ -1370,6 +1382,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
         page_topics = filtered_topics
         page = 1
         start_idx = 0
+        st.session_state['explore_page'] = 1
     
     # Summary truncation length
     SUMMARY_TRUNCATE_LENGTH = 100
@@ -1694,6 +1707,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
         
         with row_cols[0]:
             # Topic label (frozen column effect via styling)
+            # topic_label is already capitalized in explore_model.from_topic_aggregate
             st.markdown(f"**{topic.topic_label}**")
             st.caption(topic.topic_id)
         

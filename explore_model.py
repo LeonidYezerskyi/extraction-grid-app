@@ -217,6 +217,12 @@ def from_topic_aggregate(
     if not topic_label:
         topic_label = topic_id
     
+    # Capitalize first letter of each word in topic_label (Title Case)
+    if topic_label:
+        # Split by spaces and capitalize each word
+        words = topic_label.split()
+        topic_label = ' '.join(word.capitalize() for word in words)
+    
     # Extract scores with safe defaults
     importance_score = float(topic_aggregate.get('topic_score', 0.0))
     coverage_rate = float(topic_aggregate.get('coverage_rate', 0.0))
