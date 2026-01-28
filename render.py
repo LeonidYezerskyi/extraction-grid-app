@@ -146,10 +146,11 @@ def format_sentiment_mix_html(sentiment_mix: Dict[str, int]) -> str:
         if count > 0:
             color = color_map.get(sentiment, '#9ca3af')
             label = label_map.get(sentiment, sentiment.capitalize())
+            # Use !important to override any CSS that might change the color
             chip_html = (
                 f'<span style="display: inline-block; padding: 2px 8px; margin: 2px; '
-                f'background-color: {color}; color: white; border-radius: 12px; '
-                f'font-size: 11px; font-weight: 500;">{label}: {count}</span>'
+                f'background-color: {color} !important; color: white !important; border-radius: 12px; '
+                f'font-size: 11px; font-weight: 500; border: none !important;">{label}: {count}</span>'
             )
             chips.append(chip_html)
     

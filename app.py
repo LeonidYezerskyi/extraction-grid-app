@@ -1390,6 +1390,12 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     # Add CSS for frozen first column effect, sticky header, and full-width expander
     st.markdown("""
     <style>
+        /* Ensure sentiment chips have correct colors - override any brand color CSS */
+        span[style*="background-color: #ef4444"] {
+            background-color: #ef4444 !important;
+            color: white !important;
+        }
+        
         /* Style for Explore table - frozen first column effect */
         .explore-table-row {
             border-bottom: 1px solid #e5e7eb;
@@ -2293,41 +2299,35 @@ def apply_brand_styles():
             border-bottom: none !important;
         }}
         
-        /* Active tab - ONLY bottom border with brand color */
+        /* Active tab - ONLY bottom border with RED color (Streamlit default) */
         .stTabs [aria-selected="true"] {{
-            color: {brand_color} !important;
-            border-bottom: 2px solid {brand_color} !important;
+            color: #ff4b4b !important;
+            border-bottom: 2px solid #ff4b4b !important;
             border-top: none !important;
             border-left: none !important;
             border-right: none !important;
             background: none !important;
         }}
         
-        /* Remove ALL red/pink borders and underlines - AGGRESSIVE */
-        .stTabs [data-baseweb="tab"] [style*="rgb(255, 75, 75)"],
-        .stTabs [data-baseweb="tab"] [style*="rgb(239, 68, 68)"],
-        .stTabs [data-baseweb="tab"] [style*="rgb(255, 107, 107)"],
-        .stTabs [data-baseweb="tab"] [style*="#ff4b4b"],
-        .stTabs [data-baseweb="tab"] [style*="#ef4444"],
-        .stTabs [data-baseweb="tab"] [style*="border-bottom"][style*="rgb(255"],
-        .stTabs [data-baseweb="tab"] [style*="border-bottom"][style*="#ff"] {{
+        /* Remove brand color borders from tabs */
+        .stTabs [data-baseweb="tab"] [style*="{brand_color}"],
+        .stTabs [data-baseweb="tab"] [style*="#655CFE"] {{
             border: none !important;
             border-top: none !important;
             border-left: none !important;
             border-right: none !important;
             border-bottom: none !important;
             background-color: transparent !important;
-            color: {brand_color} !important;
         }}
         
-        /* Force remove red borders from tab children */
+        /* Force remove brand color borders from tab children */
         .stTabs [data-baseweb="tab"] * {{
             border-top: none !important;
             border-left: none !important;
             border-right: none !important;
         }}
         
-        /* Only allow brand color border on active tab */
+        /* Only allow red border on active tab */
         .stTabs [aria-selected="true"] * {{
             border-top: none !important;
             border-left: none !important;
@@ -2455,9 +2455,10 @@ def apply_brand_styles():
         const observer = new MutationObserver(applyBrandColors);
         observer.observe(document.body, {{ childList: true, subtree: true }});
         
-        // Fix tabs - ONLY ONE underline with brand color, NO red/pink
+        // Fix tabs - ONLY ONE underline with RED color, remove brand color
         function fixTabs() {{
             const brandColor = '{brand_color}';
+            const redColor = '#ff4b4b'; // Streamlit default red
             
             // Remove ALL borders from ALL tabs and ALL children
             document.querySelectorAll('[data-baseweb="tab"]').forEach(tab => {{
@@ -2476,25 +2477,20 @@ def apply_brand_styles():
                     element.style.borderRight = 'none';
                     element.style.borderBottom = 'none';
                     
-                    // Check computed style for red/pink borders and force remove
+                    // Remove brand color borders (but keep red)
                     const computed = window.getComputedStyle(element);
                     if (computed.borderBottom && (
-                        computed.borderBottom.includes('rgb(255, 75, 75)') ||
-                        computed.borderBottom.includes('rgb(239, 68, 68)') ||
-                        computed.borderBottom.includes('rgb(255, 107, 107)') ||
-                        computed.borderBottom.includes('#ff4b4b') ||
-                        computed.borderBottom.includes('#ef4444')
+                        computed.borderBottom.includes(brandColor) ||
+                        computed.borderBottom.includes('#655CFE')
                     )) {{
                         element.style.borderBottom = 'none';
                         element.style.setProperty('border-bottom', 'none', 'important');
                     }}
                     
-                    // Remove any inline styles with red colors
+                    // Remove any inline styles with brand color
                     if (element.style.borderBottom && (
-                        element.style.borderBottom.includes('rgb(255, 75, 75)') ||
-                        element.style.borderBottom.includes('rgb(239, 68, 68)') ||
-                        element.style.borderBottom.includes('#ff4b4b') ||
-                        element.style.borderBottom.includes('#ef4444')
+                        element.style.borderBottom.includes(brandColor) ||
+                        element.style.borderBottom.includes('#655CFE')
                     )) {{
                         element.style.borderBottom = 'none';
                         element.style.setProperty('border-bottom', 'none', 'important');
@@ -2506,17 +2502,28 @@ def apply_brand_styles():
                 removeBorders(tab);
             }});
             
-            // Set ONLY ONE bottom border on active tab (not on children)
+            // Set ONLY ONE bottom border with RED color on active tab (not on children)
             document.querySelectorAll('[data-baseweb="tab"][aria-selected="true"]').forEach(tab => {{
-                tab.style.color = brandColor;
-                tab.style.borderBottom = `2px solid ${{brandColor}}`;
+                tab.style.color = redColor;
+                tab.style.borderBottom = `2px solid ${{redColor}}`;
                 tab.style.borderTop = 'none';
                 tab.style.borderLeft = 'none';
                 tab.style.borderRight = 'none';
-                tab.style.setProperty('border-bottom', `2px solid ${{brandColor}}`, 'important');
+                tab.style.setProperty('border-bottom', `2px solid ${{redColor}}`, 'important');
                 
-                // Force remove borders from ALL children
+                // Force remove brand color borders from ALL children (but keep red)
                 tab.querySelectorAll('*').forEach(child => {{
+                    // Remove brand color borders
+                    const computed = window.getComputedStyle(child);
+                    if (computed.borderBottom && (
+                        computed.borderBottom.includes(brandColor) ||
+                        computed.borderBottom.includes('#655CFE')
+                    )) {{
+                        child.style.borderBottom = 'none';
+                        child.style.setProperty('border-bottom', 'none', 'important');
+                    }}
+                    
+                    // Remove all borders except red on the tab itself
                     child.style.borderTop = 'none';
                     child.style.borderLeft = 'none';
                     child.style.borderRight = 'none';
