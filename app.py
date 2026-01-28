@@ -1449,26 +1449,30 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
         }
         
-        /* Full-width expander when open - for "Show full summary" only */
+        /* Full-width expander when open - AGGRESSIVE approach */
         [data-testid="stExpander"].full-width-expander {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
             width: 100vw !important;
             max-width: 100vw !important;
-            position: relative !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-            z-index: 1000 !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+            z-index: 9999 !important;
+            background-color: white !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
         }
         
-        /* Break out of column container */
-        [data-testid="stExpander"].full-width-expander {
-            margin-left: calc(-50vw + 50%) !important;
-            margin-right: calc(-50vw + 50%) !important;
+        /* Break out of ALL parent containers */
+        [data-testid="column"]:has([data-testid="stExpander"].full-width-expander),
+        [data-testid="stHorizontalBlock"]:has([data-testid="stExpander"].full-width-expander),
+        [data-testid="stVerticalBlock"]:has([data-testid="stExpander"].full-width-expander) {
             width: 100vw !important;
             max-width: 100vw !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
         
         /* Ensure expander content is also full width */
@@ -1489,13 +1493,6 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
         /* Make all inner content full width */
         [data-testid="stExpander"].full-width-expander * {
             max-width: 100% !important;
-        }
-        
-        /* Remove padding from parent column when expander is full width */
-        [data-testid="column"]:has([data-testid="stExpander"].full-width-expander) {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-            max-width: 100vw !important;
         }
     </style>
     <script>
@@ -1532,36 +1529,45 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                                    button.classList.contains('streamlit-expanderHeader--is-open');
                 
                 if (isExpanded) {
-                    // Make full width when expanded - break out of container
+                    // Make full width when expanded - use fixed positioning
                     expander.classList.add('full-width-expander');
                     
-                    // Calculate offset to break out of container
-                    const mainContainer = document.querySelector('[data-testid="stAppViewContainer"]') || 
-                                         document.querySelector('.main') ||
-                                         document.body;
-                    const containerRect = mainContainer.getBoundingClientRect();
-                    const containerWidth = containerRect.width;
-                    const viewportWidth = window.innerWidth;
-                    const offset = (viewportWidth - containerWidth) / 2;
+                    // Get current position to maintain vertical position
+                    const rect = expander.getBoundingClientRect();
+                    const scrollY = window.scrollY || window.pageYOffset;
                     
-                    // Apply full-width styles
+                    // Apply full-width fixed styles
+                    expander.style.position = 'fixed';
+                    expander.style.top = `${rect.top + scrollY}px`;
+                    expander.style.left = '0';
+                    expander.style.right = '0';
                     expander.style.width = '100vw';
                     expander.style.maxWidth = '100vw';
-                    expander.style.position = 'relative';
-                    expander.style.left = `calc(-50vw + 50% + ${offset}px)`;
-                    expander.style.marginLeft = `calc(-50vw + 50% + ${offset}px)`;
-                    expander.style.marginRight = `calc(-50vw + 50% + ${offset}px)`;
-                    expander.style.paddingLeft = `calc(50vw - 50% - ${offset}px)`;
-                    expander.style.paddingRight = `calc(50vw - 50% - ${offset}px)`;
-                    expander.style.zIndex = '1000';
+                    expander.style.marginLeft = '0';
+                    expander.style.marginRight = '0';
+                    expander.style.paddingLeft = '2rem';
+                    expander.style.paddingRight = '2rem';
+                    expander.style.zIndex = '9999';
+                    expander.style.backgroundColor = 'white';
+                    expander.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                     
                     // Make content full width
                     const content = expander.querySelector('[data-testid="stExpanderContent"]');
                     if (content) {
                         content.style.maxWidth = '100%';
                         content.style.width = '100%';
-                        content.style.paddingLeft = `calc(50vw - 50% - ${offset}px)`;
-                        content.style.paddingRight = `calc(50vw - 50% - ${offset}px)`;
+                        content.style.paddingLeft = '0';
+                        content.style.paddingRight = '0';
+                    }
+                    
+                    // Also expand parent containers
+                    let parent = expander.parentElement;
+                    while (parent && parent !== document.body) {
+                        if (parent.hasAttribute('data-testid')) {
+                            parent.style.width = '100vw';
+                            parent.style.maxWidth = '100vw';
+                        }
+                        parent = parent.parentElement;
                     }
                 } else {
                     // Reset to normal width when collapsed
