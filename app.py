@@ -1500,6 +1500,39 @@ def apply_brand_styles():
             --brand-color-hover: {brand_color_hover};
         }}
         
+        /* Global override for Streamlit red colors */
+        * {{
+            --primary-color: {brand_color} !important;
+        }}
+        
+        /* Override Streamlit's default red primary color */
+        [data-baseweb="slider"] > div > div {{
+            background-color: {brand_color} !important;
+        }}
+        
+        [data-baseweb="slider-track"] {{
+            background-color: {brand_color} !important;
+        }}
+        
+        [data-baseweb="slider-handle"] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+        }}
+        
+        [data-baseweb="checkbox"] input[type="checkbox"]:checked {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+        }}
+        
+        [data-baseweb="tag"] {{
+            background-color: {brand_color} !important;
+            color: white !important;
+        }}
+        
+        [data-baseweb="tag"] svg {{
+            color: white !important;
+        }}
+        
         /* Compact Sidebar */
         .stSidebar {{
             font-size: 0.85rem;
@@ -1575,28 +1608,68 @@ def apply_brand_styles():
             font-size: 0.85rem;
         }}
         
-        /* Brand color checkboxes */
+        /* Brand color checkboxes - more specific selectors */
         .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked {{
-            background-color: {brand_color};
-            border-color: {brand_color};
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
         }}
         
         .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked + span {{
-            background-color: {brand_color};
-            border-color: {brand_color};
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
         }}
         
         .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:focus {{
-            box-shadow: 0 0 0 0.2rem rgba(101, 92, 254, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(101, 92, 254, 0.25) !important;
         }}
         
-        /* Compact slider */
+        .stSidebar [data-baseweb="checkbox"] svg {{
+            color: {brand_color} !important;
+        }}
+        
+        /* Compact slider with brand color */
         .stSidebar .stSlider {{
             margin: 0.5rem 0;
         }}
         
         .stSidebar .stSlider > div > div > div {{
-            background-color: {brand_color};
+            background-color: {brand_color} !important;
+        }}
+        
+        .stSidebar .stSlider [data-baseweb="slider"] > div > div {{
+            background-color: {brand_color} !important;
+        }}
+        
+        .stSidebar .stSlider [data-baseweb="slider"] > div > div > div {{
+            background-color: {brand_color} !important;
+        }}
+        
+        .stSidebar .stSlider [data-baseweb="slider-track"] {{
+            background-color: {brand_color} !important;
+        }}
+        
+        .stSidebar .stSlider [data-baseweb="slider-handle"] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+        }}
+        
+        /* Multiselect tags - brand color */
+        .stSidebar [data-baseweb="tag"] {{
+            background-color: {brand_color} !important;
+            color: white !important;
+        }}
+        
+        .stSidebar [data-baseweb="tag"] svg {{
+            color: white !important;
+        }}
+        
+        .stSidebar [data-baseweb="select"] [data-baseweb="tag"] {{
+            background-color: {brand_color} !important;
+            color: white !important;
+        }}
+        
+        .stSidebar [data-baseweb="select"] [data-baseweb="tag"] svg {{
+            color: white !important;
         }}
         
         /* Compact file uploader */
@@ -1622,6 +1695,35 @@ def apply_brand_styles():
         
         .stSidebar [data-baseweb="notification"] {{
             border-left-color: {brand_color} !important;
+        }}
+        
+        /* Override Streamlit default red colors */
+        .stSidebar [style*="rgb(255, 75, 75)"],
+        .stSidebar [style*="rgb(239, 68, 68)"],
+        .stSidebar [style*="#ef4444"],
+        .stSidebar [style*="#ff4b4b"] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+            color: white !important;
+        }}
+        
+        /* Slider track and handle - override red */
+        .stSidebar [data-baseweb="slider"] [style*="rgb(255, 75, 75)"],
+        .stSidebar [data-baseweb="slider"] [style*="#ff4b4b"] {{
+            background-color: {brand_color} !important;
+        }}
+        
+        /* Checkbox - override red */
+        .stSidebar [data-baseweb="checkbox"] [style*="rgb(255, 75, 75)"],
+        .stSidebar [data-baseweb="checkbox"] [style*="#ff4b4b"] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+        }}
+        
+        /* Tag - override red */
+        .stSidebar [data-baseweb="tag"] [style*="rgb(255, 75, 75)"],
+        .stSidebar [data-baseweb="tag"] [style*="#ff4b4b"] {{
+            background-color: {brand_color} !important;
         }}
         
         /* Primary buttons (main area) */
