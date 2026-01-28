@@ -1238,9 +1238,9 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     # Convert to ExploreTopic model and rank (only once, cached)
     if cache_key not in st.session_state:
         explore_topics = []
-    for topic_agg in topic_aggregates:
-        topic_id = topic_agg['topic_id']
-        sentiment_mix = digest._compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
+        for topic_agg in topic_aggregates:
+            topic_id = topic_agg['topic_id']
+            sentiment_mix = digest._compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
             explore_topic = explore_model.from_topic_aggregate(topic_agg, sentiment_mix, topic_id)
             explore_topics.append(explore_topic)
         
