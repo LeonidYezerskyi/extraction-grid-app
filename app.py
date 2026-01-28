@@ -1849,39 +1849,53 @@ def apply_brand_styles():
             color: {brand_color} !important;
         }}
         
-        /* CRITICAL: Ensure sentiment chips keep their colors - highest priority */
-        .sentiment-chip {{
+        /* CRITICAL: Ensure sentiment chips keep their colors - MAXIMUM PRIORITY */
+        .sentiment-chip-positive {{
+            background-color: #22c55e !important;
+            color: white !important;
             border: none !important;
         }}
-        .sentiment-chip[style*="background-color: #22c55e"] {{
+        .sentiment-chip-negative {{
+            background-color: #ef4444 !important;
+            color: white !important;
+            border: none !important;
+        }}
+        .sentiment-chip-neutral {{
+            background-color: #6b7280 !important;
+            color: white !important;
+            border: none !important;
+        }}
+        .sentiment-chip-mixed {{
+            background-color: #f59e0b !important;
+            color: white !important;
+            border: none !important;
+        }}
+        .sentiment-chip-unknown {{
+            background-color: #9ca3af !important;
+            color: white !important;
+            border: none !important;
+        }}
+        
+        /* Also target by data attribute */
+        [data-sentiment="positive"] {{
             background-color: #22c55e !important;
             color: white !important;
         }}
-        .sentiment-chip[style*="background-color: #ef4444"] {{
+        [data-sentiment="negative"] {{
             background-color: #ef4444 !important;
             color: white !important;
         }}
-        .sentiment-chip[style*="background-color: #6b7280"] {{
+        [data-sentiment="neutral"] {{
             background-color: #6b7280 !important;
             color: white !important;
         }}
-        .sentiment-chip[style*="background-color: #f59e0b"] {{
+        [data-sentiment="mixed"] {{
             background-color: #f59e0b !important;
             color: white !important;
         }}
-        .sentiment-chip[style*="background-color: #9ca3af"] {{
+        [data-sentiment="unknown"] {{
             background-color: #9ca3af !important;
             color: white !important;
-        }}
-        
-        /* Override inline styles with red colors - but EXCLUDE sentiment chips */
-        [style*="rgb(255, 75, 75)"]:not(.sentiment-chip),
-        [style*="rgb(239, 68, 68)"]:not(.sentiment-chip),
-        [style*="#ff4b4b"]:not(.sentiment-chip),
-        [style*="#ef4444"]:not(.sentiment-chip) {{
-            background-color: {brand_color} !important;
-            border-color: {brand_color} !important;
-            color: {brand_color} !important;
         }}
         
         [data-baseweb="tag"] {{
@@ -2505,6 +2519,61 @@ def apply_brand_styles():
             }});
         }}
         
+        // Fix sentiment chips - FORCE correct colors using classes and data attributes
+        function fixSentimentChips() {{
+            const colorMap = {{
+                'positive': '#22c55e',
+                'negative': '#ef4444',
+                'neutral': '#6b7280',
+                'mixed': '#f59e0b',
+                'unknown': '#9ca3af'
+            }};
+            
+            // Fix by data attribute
+            document.querySelectorAll('[data-sentiment]').forEach(chip => {{
+                const sentiment = chip.getAttribute('data-sentiment');
+                if (sentiment && colorMap[sentiment]) {{
+                    chip.style.setProperty('background-color', colorMap[sentiment], 'important');
+                    chip.style.setProperty('color', 'white', 'important');
+                    chip.style.setProperty('border', 'none', 'important');
+                }}
+            }});
+            
+            // Fix by class
+            document.querySelectorAll('.sentiment-chip-positive').forEach(chip => {{
+                chip.style.setProperty('background-color', '#22c55e', 'important');
+                chip.style.setProperty('color', 'white', 'important');
+            }});
+            document.querySelectorAll('.sentiment-chip-negative').forEach(chip => {{
+                chip.style.setProperty('background-color', '#ef4444', 'important');
+                chip.style.setProperty('color', 'white', 'important');
+            }});
+            document.querySelectorAll('.sentiment-chip-neutral').forEach(chip => {{
+                chip.style.setProperty('background-color', '#6b7280', 'important');
+                chip.style.setProperty('color', 'white', 'important');
+            }});
+            document.querySelectorAll('.sentiment-chip-mixed').forEach(chip => {{
+                chip.style.setProperty('background-color', '#f59e0b', 'important');
+                chip.style.setProperty('color', 'white', 'important');
+            }});
+            document.querySelectorAll('.sentiment-chip-unknown').forEach(chip => {{
+                chip.style.setProperty('background-color', '#9ca3af', 'important');
+                chip.style.setProperty('color', 'white', 'important');
+            }});
+        }}
+        
+        // Run immediately and watch for changes
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', fixSentimentChips);
+        }} else {{
+            fixSentimentChips();
+        }}
+        
+        const sentimentObserver = new MutationObserver(() => {{
+            fixSentimentChips();
+        }});
+        sentimentObserver.observe(document.body, {{ childList: true, subtree: true }});
+        
         // Fix checkboxes - force brand color
         function fixCheckboxes() {{
             const brandColor = '{brand_color}';
@@ -2549,14 +2618,19 @@ def apply_brand_styles():
         const tabObserver = new MutationObserver(() => {{
             fixTabs();
             fixCheckboxes();
+            fixSentimentChips();
         }});
         tabObserver.observe(document.body, {{ childList: true, subtree: true }});
         
-        // Also run checkbox fix on load
+        // Also run fixes on load
         if (document.readyState === 'loading') {{
-            document.addEventListener('DOMContentLoaded', fixCheckboxes);
+            document.addEventListener('DOMContentLoaded', () => {{
+                fixCheckboxes();
+                fixSentimentChips();
+            }});
         }} else {{
             fixCheckboxes();
+            fixSentimentChips();
         }}
     </script>
     """, unsafe_allow_html=True)
