@@ -1662,13 +1662,16 @@ def apply_brand_styles():
             min-height: 1.75rem;
         }}
         
-        /* Brand color checkboxes - AGGRESSIVE OVERRIDE */
-        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked {{
+        /* Brand color checkboxes - MAXIMUM OVERRIDE */
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked,
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"][checked] {{
             background-color: {brand_color} !important;
             border-color: {brand_color} !important;
+            accent-color: {brand_color} !important;
         }}
         
-        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked + span {{
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked + span,
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"][checked] + span {{
             background-color: {brand_color} !important;
             border-color: {brand_color} !important;
         }}
@@ -1679,27 +1682,24 @@ def apply_brand_styles():
         
         .stSidebar [data-baseweb="checkbox"] svg {{
             color: {brand_color} !important;
+            fill: {brand_color} !important;
         }}
         
-        /* Override any red colors in checkbox */
+        /* Override ANY red colors in checkbox - AGGRESSIVE */
         .stSidebar [data-baseweb="checkbox"] *[style*="rgb(255, 75, 75)"],
         .stSidebar [data-baseweb="checkbox"] *[style*="rgb(239, 68, 68)"],
+        .stSidebar [data-baseweb="checkbox"] *[style*="rgb(255, 107, 107)"],
         .stSidebar [data-baseweb="checkbox"] *[style*="#ff4b4b"],
         .stSidebar [data-baseweb="checkbox"] *[style*="#ef4444"] {{
             background-color: {brand_color} !important;
             border-color: {brand_color} !important;
             color: {brand_color} !important;
+            fill: {brand_color} !important;
         }}
         
-        /* Force checkbox checked state color */
-        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"][checked] {{
-            background-color: {brand_color} !important;
-            border-color: {brand_color} !important;
-        }}
-        
-        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"][checked] + span {{
-            background-color: {brand_color} !important;
-            border-color: {brand_color} !important;
+        /* Override checkbox container */
+        .stSidebar [data-baseweb="checkbox"] {{
+            color: {brand_color} !important;
         }}
         
         /* Ultra compact slider with brand color */
@@ -1753,7 +1753,7 @@ def apply_brand_styles():
             color: white !important;
         }}
         
-        /* Ultra compact file uploader - 3x smaller height */
+        /* Ultra compact file uploader - fixed spacing */
         .stSidebar .stFileUploader {{
             font-size: 0.75rem;
             margin: 0.1rem 0;
@@ -1762,55 +1762,69 @@ def apply_brand_styles():
         .stSidebar .stFileUploader > div {{
             min-height: auto !important;
             height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.2rem !important;
         }}
         
         .stSidebar .stFileUploader > div > div {{
             border-color: {brand_color};
-            padding: 0.2rem 0.3rem !important;
-            min-height: 2rem !important;
-            height: 2rem !important;
+            padding: 0.3rem 0.4rem !important;
+            min-height: 2.5rem !important;
+            height: auto !important;
         }}
         
         .stSidebar .stFileUploader label {{
             font-size: 0.75rem;
-            margin: 0.1rem 0;
+            margin: 0.1rem 0 0.2rem 0;
             padding: 0;
         }}
         
         .stSidebar .stFileUploader [data-testid="stFileUploaderDropzone"] {{
-            min-height: 2rem !important;
-            height: 2rem !important;
-            padding: 0.2rem 0.3rem !important;
+            min-height: 2.5rem !important;
+            height: auto !important;
+            padding: 0.3rem 0.4rem !important;
+            margin-bottom: 0.2rem !important;
         }}
         
         .stSidebar .stFileUploader [data-testid="stFileUploaderDropzoneInstructions"] {{
             font-size: 0.7rem;
-            margin: 0;
+            margin: 0.1rem 0;
             padding: 0;
         }}
         
         .stSidebar .stFileUploader [data-testid="stFileUploaderDropzoneInstructions"] p {{
             margin: 0.1rem 0;
             font-size: 0.7rem;
+            line-height: 1.2;
         }}
         
         .stSidebar .stFileUploader button {{
-            padding: 0.15rem 0.4rem !important;
+            padding: 0.2rem 0.5rem !important;
             font-size: 0.7rem !important;
-            min-height: 1.5rem !important;
-            height: 1.5rem !important;
+            min-height: 1.6rem !important;
+            height: 1.6rem !important;
+            margin: 0.1rem 0 !important;
         }}
         
         .stSidebar .stFileUploader [data-testid="stFileUploaderFileName"] {{
             font-size: 0.7rem;
-            margin: 0.1rem 0;
+            margin: 0.15rem 0;
             padding: 0.1rem 0;
+            display: block;
         }}
         
         .stSidebar .stFileUploader [data-testid="stFileUploaderFileSize"] {{
             font-size: 0.65rem;
-            margin: 0;
+            margin: 0.05rem 0;
             padding: 0;
+            display: block;
+        }}
+        
+        /* Fix file uploader file info spacing */
+        .stSidebar .stFileUploader [data-testid="stFileUploaderFileStatus"] {{
+            margin-top: 0.2rem !important;
+            margin-bottom: 0.1rem !important;
         }}
         
         /* Ultra compact captions */
@@ -1934,70 +1948,70 @@ def apply_brand_styles():
             background-color: {brand_color};
         }}
         
-        /* Tabs - single brand color underline only */
+        /* Tabs - ONLY ONE brand color underline, NO red/pink */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 8px;
+            border-bottom: 1px solid #e5e7eb;
         }}
         
+        /* Remove ALL borders from all tabs */
         .stTabs [data-baseweb="tab"] {{
             color: #666;
-            border-bottom: none !important;
             border: none !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            background: none !important;
         }}
         
+        /* Remove ALL pseudo-elements */
         .stTabs [data-baseweb="tab"]::after,
-        .stTabs [data-baseweb="tab"]::before {{
-            display: none !important;
-        }}
-        
-        .stTabs [aria-selected="true"] {{
-            color: {brand_color};
-            border-bottom: 2px solid {brand_color} !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-        }}
-        
-        /* Remove any additional underlines or borders */
-        .stTabs [data-baseweb="tab"] > div {{
-            border-bottom: none !important;
-        }}
-        
-        .stTabs [aria-selected="true"] > div {{
-            border-bottom: 2px solid {brand_color} !important;
-        }}
-        
-        /* Remove any red/pink underlines - AGGRESSIVE */
-        .stTabs [data-baseweb="tab"] [style*="rgb(255, 75, 75)"],
-        .stTabs [data-baseweb="tab"] [style*="rgb(239, 68, 68)"],
-        .stTabs [data-baseweb="tab"] [style*="#ff4b4b"],
-        .stTabs [data-baseweb="tab"] [style*="#ef4444"],
-        .stTabs [data-baseweb="tab"] [style*="rgb(255, 107, 107)"] {{
-            border-bottom: none !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-            background-color: transparent !important;
-        }}
-        
-        /* Remove all borders from tab buttons */
-        .stTabs [data-baseweb="tab"] button {{
-            border: none !important;
-            border-bottom: none !important;
-        }}
-        
-        .stTabs [aria-selected="true"] button {{
-            border-bottom: 2px solid {brand_color} !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-        }}
-        
-        /* Remove pseudo-elements that create double lines */
+        .stTabs [data-baseweb="tab"]::before,
         .stTabs [data-baseweb="tab"] *::after,
         .stTabs [data-baseweb="tab"] *::before {{
             display: none !important;
             content: none !important;
+        }}
+        
+        /* Remove borders from inner divs */
+        .stTabs [data-baseweb="tab"] > div,
+        .stTabs [data-baseweb="tab"] > div > div {{
+            border: none !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+        }}
+        
+        /* Remove borders from buttons */
+        .stTabs [data-baseweb="tab"] button {{
+            border: none !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+        }}
+        
+        /* Active tab - ONLY bottom border with brand color */
+        .stTabs [aria-selected="true"] {{
+            color: {brand_color} !important;
+            border-bottom: 2px solid {brand_color} !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            background: none !important;
+        }}
+        
+        /* Remove any red/pink colors completely */
+        .stTabs [data-baseweb="tab"] [style*="rgb(255, 75, 75)"],
+        .stTabs [data-baseweb="tab"] [style*="rgb(239, 68, 68)"],
+        .stTabs [data-baseweb="tab"] [style*="rgb(255, 107, 107)"],
+        .stTabs [data-baseweb="tab"] [style*="#ff4b4b"],
+        .stTabs [data-baseweb="tab"] [style*="#ef4444"] {{
+            border: none !important;
+            background-color: transparent !important;
+            color: {brand_color} !important;
         }}
         
         /* Sidebar headers */
@@ -2075,15 +2089,32 @@ def apply_brand_styles():
                 el.style.backgroundColor = brandColor;
             }});
             
-            // Override checkbox colors
-            document.querySelectorAll('[data-baseweb="checkbox"] input[type="checkbox"]:checked').forEach(el => {{
-                el.style.backgroundColor = brandColor;
-                el.style.borderColor = brandColor;
-            }});
-            
-            document.querySelectorAll('[data-baseweb="checkbox"] svg').forEach(el => {{
-                el.style.color = brandColor;
-                el.style.fill = brandColor;
+            // Override checkbox colors - AGGRESSIVE
+            document.querySelectorAll('[data-baseweb="checkbox"]').forEach(container => {{
+                const checkbox = container.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {{
+                    checkbox.style.backgroundColor = brandColor;
+                    checkbox.style.borderColor = brandColor;
+                    checkbox.style.accentColor = brandColor;
+                    
+                    // Fix span wrapper
+                    const span = checkbox.nextElementSibling;
+                    if (span && span.tagName === 'SPAN') {{
+                        span.style.backgroundColor = brandColor;
+                        span.style.borderColor = brandColor;
+                    }}
+                }}
+                
+                // Fix SVG
+                const svg = container.querySelector('svg');
+                if (svg) {{
+                    svg.style.color = brandColor;
+                    svg.style.fill = brandColor;
+                    svg.querySelectorAll('path, circle, rect').forEach(path => {{
+                        path.style.fill = brandColor;
+                        path.style.stroke = brandColor;
+                    }});
+                }}
             }});
             
             // Override slider value number color
@@ -2103,39 +2134,44 @@ def apply_brand_styles():
         const observer = new MutationObserver(applyBrandColors);
         observer.observe(document.body, {{ childList: true, subtree: true }});
         
-        // Fix tabs - remove double underlines, keep only brand color
+        // Fix tabs - ONLY ONE underline, NO red/pink
         function fixTabs() {{
             const brandColor = '{brand_color}';
             
-            // Remove ALL borders from all tabs first
+            // Remove ALL borders from ALL tabs and ALL children
             document.querySelectorAll('[data-baseweb="tab"]').forEach(tab => {{
+                // Remove from tab element itself
+                tab.style.border = 'none';
                 tab.style.borderTop = 'none';
                 tab.style.borderLeft = 'none';
                 tab.style.borderRight = 'none';
                 tab.style.borderBottom = 'none';
                 tab.style.background = 'none';
                 
-                // Remove borders from all child elements (buttons, divs, etc.)
-                tab.querySelectorAll('*').forEach(child => {{
-                    // Remove any red/pink borders
-                    const borderBottom = child.style.borderBottom || window.getComputedStyle(child).borderBottom;
-                    if (borderBottom && (
-                        borderBottom.includes('rgb(255, 75, 75)') ||
-                        borderBottom.includes('rgb(239, 68, 68)') ||
-                        borderBottom.includes('rgb(255, 107, 107)') ||
-                        borderBottom.includes('#ff4b4b') ||
-                        borderBottom.includes('#ef4444')
+                // Remove from ALL children recursively
+                const removeBorders = (element) => {{
+                    element.style.borderTop = 'none';
+                    element.style.borderLeft = 'none';
+                    element.style.borderRight = 'none';
+                    element.style.borderBottom = 'none';
+                    
+                    // Check computed style for red/pink borders
+                    const computed = window.getComputedStyle(element);
+                    if (computed.borderBottom && (
+                        computed.borderBottom.includes('rgb(255, 75, 75)') ||
+                        computed.borderBottom.includes('rgb(239, 68, 68)') ||
+                        computed.borderBottom.includes('rgb(255, 107, 107)')
                     )) {{
-                        child.style.borderBottom = 'none';
+                        element.style.borderBottom = 'none';
                     }}
-                    // Remove all other borders
-                    child.style.borderTop = 'none';
-                    child.style.borderLeft = 'none';
-                    child.style.borderRight = 'none';
-                }});
+                    
+                    Array.from(element.children).forEach(child => removeBorders(child));
+                }};
+                
+                removeBorders(tab);
             }});
             
-            // Set brand color bottom border ONLY for active tab
+            // Set ONLY ONE bottom border on active tab (not on children)
             document.querySelectorAll('[data-baseweb="tab"][aria-selected="true"]').forEach(tab => {{
                 tab.style.color = brandColor;
                 tab.style.borderBottom = `2px solid ${{brandColor}}`;
@@ -2143,22 +2179,45 @@ def apply_brand_styles():
                 tab.style.borderLeft = 'none';
                 tab.style.borderRight = 'none';
                 
-                // Also set on inner div if exists, but remove any other borders
-                const innerDiv = tab.querySelector('div');
-                if (innerDiv) {{
-                    innerDiv.style.borderBottom = `2px solid ${{brandColor}}`;
-                    innerDiv.style.borderTop = 'none';
-                    innerDiv.style.borderLeft = 'none';
-                    innerDiv.style.borderRight = 'none';
-                }}
-                
-                // Remove any button borders
-                const button = tab.querySelector('button');
-                if (button) {{
-                    button.style.borderBottom = `2px solid ${{brandColor}}`;
-                    button.style.borderTop = 'none';
-                    button.style.borderLeft = 'none';
-                    button.style.borderRight = 'none';
+                // Ensure children don't have borders
+                tab.querySelectorAll('*').forEach(child => {{
+                    child.style.borderTop = 'none';
+                    child.style.borderLeft = 'none';
+                    child.style.borderRight = 'none';
+                    child.style.borderBottom = 'none';
+                }});
+            }});
+        }}
+        
+        // Fix checkboxes - force brand color
+        function fixCheckboxes() {{
+            const brandColor = '{brand_color}';
+            
+            document.querySelectorAll('[data-baseweb="checkbox"]').forEach(checkboxContainer => {{
+                const checkbox = checkboxContainer.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {{
+                    checkbox.style.backgroundColor = brandColor;
+                    checkbox.style.borderColor = brandColor;
+                    checkbox.style.accentColor = brandColor;
+                    
+                    // Fix the span wrapper
+                    const span = checkbox.nextElementSibling;
+                    if (span && span.tagName === 'SPAN') {{
+                        span.style.backgroundColor = brandColor;
+                        span.style.borderColor = brandColor;
+                    }}
+                    
+                    // Fix SVG icon
+                    const svg = checkboxContainer.querySelector('svg');
+                    if (svg) {{
+                        svg.style.color = brandColor;
+                        svg.style.fill = brandColor;
+                        // Also set stroke if exists
+                        svg.querySelectorAll('path, circle, rect').forEach(path => {{
+                            path.style.fill = brandColor;
+                            path.style.stroke = brandColor;
+                        }});
+                    }}
                 }}
             }});
         }}
@@ -2171,8 +2230,18 @@ def apply_brand_styles():
         }}
         
         // Reapply tab fix after Streamlit updates
-        const tabObserver = new MutationObserver(fixTabs);
+        const tabObserver = new MutationObserver(() => {{
+            fixTabs();
+            fixCheckboxes();
+        }});
         tabObserver.observe(document.body, {{ childList: true, subtree: true }});
+        
+        // Also run checkbox fix on load
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', fixCheckboxes);
+        }} else {{
+            fixCheckboxes();
+        }}
     </script>
     """, unsafe_allow_html=True)
 
