@@ -1505,7 +1505,7 @@ def apply_brand_styles():
             --primary-color: {brand_color} !important;
         }}
         
-        /* Override Streamlit's default red primary color */
+        /* Override Streamlit's default red primary color - AGGRESSIVE */
         [data-baseweb="slider"] > div > div {{
             background-color: {brand_color} !important;
         }}
@@ -1519,9 +1519,38 @@ def apply_brand_styles():
             border-color: {brand_color} !important;
         }}
         
+        /* Slider value display */
+        .stSlider [data-testid="stMarkdownContainer"] {{
+            color: {brand_color} !important;
+        }}
+        
+        .stSlider label + div {{
+            color: {brand_color} !important;
+        }}
+        
+        /* Checkbox - override all red */
         [data-baseweb="checkbox"] input[type="checkbox"]:checked {{
             background-color: {brand_color} !important;
             border-color: {brand_color} !important;
+        }}
+        
+        [data-baseweb="checkbox"] input[type="checkbox"]:checked + span {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+        }}
+        
+        [data-baseweb="checkbox"] svg {{
+            color: {brand_color} !important;
+        }}
+        
+        /* Override inline styles with red colors */
+        [style*="rgb(255, 75, 75)"],
+        [style*="rgb(239, 68, 68)"],
+        [style*="#ff4b4b"],
+        [style*="#ef4444"] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+            color: {brand_color} !important;
         }}
         
         [data-baseweb="tag"] {{
@@ -1633,7 +1662,7 @@ def apply_brand_styles():
             min-height: 1.75rem;
         }}
         
-        /* Brand color checkboxes - more specific selectors */
+        /* Brand color checkboxes - AGGRESSIVE OVERRIDE */
         .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked {{
             background-color: {brand_color} !important;
             border-color: {brand_color} !important;
@@ -1650,6 +1679,27 @@ def apply_brand_styles():
         
         .stSidebar [data-baseweb="checkbox"] svg {{
             color: {brand_color} !important;
+        }}
+        
+        /* Override any red colors in checkbox */
+        .stSidebar [data-baseweb="checkbox"] *[style*="rgb(255, 75, 75)"],
+        .stSidebar [data-baseweb="checkbox"] *[style*="rgb(239, 68, 68)"],
+        .stSidebar [data-baseweb="checkbox"] *[style*="#ff4b4b"],
+        .stSidebar [data-baseweb="checkbox"] *[style*="#ef4444"] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+            color: {brand_color} !important;
+        }}
+        
+        /* Force checkbox checked state color */
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"][checked] {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+        }}
+        
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"][checked] + span {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
         }}
         
         /* Ultra compact slider with brand color */
@@ -1703,19 +1753,64 @@ def apply_brand_styles():
             color: white !important;
         }}
         
-        /* Ultra compact file uploader */
+        /* Ultra compact file uploader - 3x smaller height */
         .stSidebar .stFileUploader {{
-            font-size: 0.8rem;
-            margin: 0.15rem 0;
+            font-size: 0.75rem;
+            margin: 0.1rem 0;
+        }}
+        
+        .stSidebar .stFileUploader > div {{
+            min-height: auto !important;
+            height: auto !important;
         }}
         
         .stSidebar .stFileUploader > div > div {{
             border-color: {brand_color};
-            padding: 0.35rem;
+            padding: 0.2rem 0.3rem !important;
+            min-height: 2rem !important;
+            height: 2rem !important;
         }}
         
         .stSidebar .stFileUploader label {{
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            margin: 0.1rem 0;
+            padding: 0;
+        }}
+        
+        .stSidebar .stFileUploader [data-testid="stFileUploaderDropzone"] {{
+            min-height: 2rem !important;
+            height: 2rem !important;
+            padding: 0.2rem 0.3rem !important;
+        }}
+        
+        .stSidebar .stFileUploader [data-testid="stFileUploaderDropzoneInstructions"] {{
+            font-size: 0.7rem;
+            margin: 0;
+            padding: 0;
+        }}
+        
+        .stSidebar .stFileUploader [data-testid="stFileUploaderDropzoneInstructions"] p {{
+            margin: 0.1rem 0;
+            font-size: 0.7rem;
+        }}
+        
+        .stSidebar .stFileUploader button {{
+            padding: 0.15rem 0.4rem !important;
+            font-size: 0.7rem !important;
+            min-height: 1.5rem !important;
+            height: 1.5rem !important;
+        }}
+        
+        .stSidebar .stFileUploader [data-testid="stFileUploaderFileName"] {{
+            font-size: 0.7rem;
+            margin: 0.1rem 0;
+            padding: 0.1rem 0;
+        }}
+        
+        .stSidebar .stFileUploader [data-testid="stFileUploaderFileSize"] {{
+            font-size: 0.65rem;
+            margin: 0;
+            padding: 0;
         }}
         
         /* Ultra compact captions */
@@ -1839,19 +1934,70 @@ def apply_brand_styles():
             background-color: {brand_color};
         }}
         
-        /* Tabs */
+        /* Tabs - single brand color underline only */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 8px;
         }}
         
         .stTabs [data-baseweb="tab"] {{
             color: #666;
-            border-bottom: 2px solid transparent;
+            border-bottom: none !important;
+            border: none !important;
+        }}
+        
+        .stTabs [data-baseweb="tab"]::after,
+        .stTabs [data-baseweb="tab"]::before {{
+            display: none !important;
         }}
         
         .stTabs [aria-selected="true"] {{
             color: {brand_color};
-            border-bottom-color: {brand_color};
+            border-bottom: 2px solid {brand_color} !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+        }}
+        
+        /* Remove any additional underlines or borders */
+        .stTabs [data-baseweb="tab"] > div {{
+            border-bottom: none !important;
+        }}
+        
+        .stTabs [aria-selected="true"] > div {{
+            border-bottom: 2px solid {brand_color} !important;
+        }}
+        
+        /* Remove any red/pink underlines - AGGRESSIVE */
+        .stTabs [data-baseweb="tab"] [style*="rgb(255, 75, 75)"],
+        .stTabs [data-baseweb="tab"] [style*="rgb(239, 68, 68)"],
+        .stTabs [data-baseweb="tab"] [style*="#ff4b4b"],
+        .stTabs [data-baseweb="tab"] [style*="#ef4444"],
+        .stTabs [data-baseweb="tab"] [style*="rgb(255, 107, 107)"] {{
+            border-bottom: none !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            background-color: transparent !important;
+        }}
+        
+        /* Remove all borders from tab buttons */
+        .stTabs [data-baseweb="tab"] button {{
+            border: none !important;
+            border-bottom: none !important;
+        }}
+        
+        .stTabs [aria-selected="true"] button {{
+            border-bottom: 2px solid {brand_color} !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+        }}
+        
+        /* Remove pseudo-elements that create double lines */
+        .stTabs [data-baseweb="tab"] *::after,
+        .stTabs [data-baseweb="tab"] *::before {{
+            display: none !important;
+            content: none !important;
         }}
         
         /* Sidebar headers */
@@ -1914,6 +2060,120 @@ def apply_brand_styles():
             background-color: rgba(101, 92, 254, 0.1) !important;
         }}
     </style>
+    <script>
+        // Force brand color on slider and checkbox - run after page load
+        function applyBrandColors() {{
+            const brandColor = '{brand_color}';
+            
+            // Override slider colors
+            document.querySelectorAll('[data-baseweb="slider-handle"]').forEach(el => {{
+                el.style.backgroundColor = brandColor;
+                el.style.borderColor = brandColor;
+            }});
+            
+            document.querySelectorAll('[data-baseweb="slider-track"]').forEach(el => {{
+                el.style.backgroundColor = brandColor;
+            }});
+            
+            // Override checkbox colors
+            document.querySelectorAll('[data-baseweb="checkbox"] input[type="checkbox"]:checked').forEach(el => {{
+                el.style.backgroundColor = brandColor;
+                el.style.borderColor = brandColor;
+            }});
+            
+            document.querySelectorAll('[data-baseweb="checkbox"] svg').forEach(el => {{
+                el.style.color = brandColor;
+                el.style.fill = brandColor;
+            }});
+            
+            // Override slider value number color
+            document.querySelectorAll('.stSlider [data-testid="stMarkdownContainer"] p').forEach(el => {{
+                el.style.color = brandColor;
+            }});
+        }}
+        
+        // Run on load and after Streamlit reruns
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', applyBrandColors);
+        }} else {{
+            applyBrandColors();
+        }}
+        
+        // Reapply after Streamlit updates
+        const observer = new MutationObserver(applyBrandColors);
+        observer.observe(document.body, {{ childList: true, subtree: true }});
+        
+        // Fix tabs - remove double underlines, keep only brand color
+        function fixTabs() {{
+            const brandColor = '{brand_color}';
+            
+            // Remove ALL borders from all tabs first
+            document.querySelectorAll('[data-baseweb="tab"]').forEach(tab => {{
+                tab.style.borderTop = 'none';
+                tab.style.borderLeft = 'none';
+                tab.style.borderRight = 'none';
+                tab.style.borderBottom = 'none';
+                tab.style.background = 'none';
+                
+                // Remove borders from all child elements (buttons, divs, etc.)
+                tab.querySelectorAll('*').forEach(child => {{
+                    // Remove any red/pink borders
+                    const borderBottom = child.style.borderBottom || window.getComputedStyle(child).borderBottom;
+                    if (borderBottom && (
+                        borderBottom.includes('rgb(255, 75, 75)') ||
+                        borderBottom.includes('rgb(239, 68, 68)') ||
+                        borderBottom.includes('rgb(255, 107, 107)') ||
+                        borderBottom.includes('#ff4b4b') ||
+                        borderBottom.includes('#ef4444')
+                    )) {{
+                        child.style.borderBottom = 'none';
+                    }}
+                    // Remove all other borders
+                    child.style.borderTop = 'none';
+                    child.style.borderLeft = 'none';
+                    child.style.borderRight = 'none';
+                }});
+            }});
+            
+            // Set brand color bottom border ONLY for active tab
+            document.querySelectorAll('[data-baseweb="tab"][aria-selected="true"]').forEach(tab => {{
+                tab.style.color = brandColor;
+                tab.style.borderBottom = `2px solid ${{brandColor}}`;
+                tab.style.borderTop = 'none';
+                tab.style.borderLeft = 'none';
+                tab.style.borderRight = 'none';
+                
+                // Also set on inner div if exists, but remove any other borders
+                const innerDiv = tab.querySelector('div');
+                if (innerDiv) {{
+                    innerDiv.style.borderBottom = `2px solid ${{brandColor}}`;
+                    innerDiv.style.borderTop = 'none';
+                    innerDiv.style.borderLeft = 'none';
+                    innerDiv.style.borderRight = 'none';
+                }}
+                
+                // Remove any button borders
+                const button = tab.querySelector('button');
+                if (button) {{
+                    button.style.borderBottom = `2px solid ${{brandColor}}`;
+                    button.style.borderTop = 'none';
+                    button.style.borderLeft = 'none';
+                    button.style.borderRight = 'none';
+                }}
+            }});
+        }}
+        
+        // Run tab fix
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', fixTabs);
+        }} else {{
+            fixTabs();
+        }}
+        
+        // Reapply tab fix after Streamlit updates
+        const tabObserver = new MutationObserver(fixTabs);
+        tabObserver.observe(document.body, {{ childList: true, subtree: true }});
+    </script>
     """, unsafe_allow_html=True)
 
 
