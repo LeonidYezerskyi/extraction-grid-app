@@ -1123,8 +1123,17 @@ def _format_sentiment_with_icon(sentiment_label: str) -> str:
         'mixed': '🔄',
         'unknown': '❓'
     }
+    colors = {
+        'positive': '#22c55e',  # green
+        'negative': '#ef4444',  # red
+        'neutral': '#6b7280',  # gray
+        'mixed': '#f59e0b',     # amber
+        'unknown': '#9ca3af'     # light gray
+    }
     icon = icons.get(sentiment_label, '❓')
-    return f"{icon} {sentiment_label.capitalize()}"
+    color = colors.get(sentiment_label, '#9ca3af')
+    label_text = sentiment_label.capitalize()
+    return f'<span style="color: {color};">{icon} {label_text}</span>'
 
 
 def _format_importance_with_rank(importance_score: float, rank: int) -> str:
@@ -1365,7 +1374,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     # Summary truncation length
     SUMMARY_TRUNCATE_LENGTH = 100
     
-    # Add CSS for frozen first column effect and full-width expander
+    # Add CSS for frozen first column effect, sticky header, and full-width expander
     st.markdown("""
     <style>
         /* Style for Explore table - frozen first column effect */
@@ -1382,27 +1391,92 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             padding-right: 16px;
         }
         
+        /* Sticky table header - make header row stick to top when scrolling */
+        .explore-table-header,
+        [data-testid="stHorizontalBlock"].explore-table-header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 100 !important;
+            background-color: white !important;
+            padding: 12px 0 !important;
+            margin-bottom: 8px !important;
+            border-bottom: 2px solid #e5e7eb !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        /* Ensure header columns have proper styling */
+        .explore-table-header [data-testid="column"],
+        [data-testid="stHorizontalBlock"].explore-table-header [data-testid="column"] {
+            background-color: white !important;
+            padding: 8px 12px !important;
+        }
+        
+        /* Make header text bold and slightly larger */
+        .explore-table-header [data-testid="stMarkdownContainer"],
+        [data-testid="stHorizontalBlock"].explore-table-header [data-testid="stMarkdownContainer"] {
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+            color: #1f2937 !important;
+        }
+        
+        /* Alternative selector for header row */
+        [data-testid="stHorizontalBlock"]:has([data-testid="column"]:has-text("Topic")):has([data-testid="column"]:has-text("Importance")) {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 100 !important;
+            background-color: white !important;
+            padding: 12px 0 !important;
+            border-bottom: 2px solid #e5e7eb !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+        }
+        
         /* Full-width expander when open - for "Show full summary" only */
         [data-testid="stExpander"].full-width-expander {
             width: 100vw !important;
             max-width: 100vw !important;
             position: relative !important;
             left: 50% !important;
-            right: 50% !important;
-            margin-left: -50vw !important;
-            margin-right: -50vw !important;
+            transform: translateX(-50%) !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
             z-index: 1000 !important;
+        }
+        
+        /* Break out of column container */
+        [data-testid="stExpander"].full-width-expander {
+            margin-left: calc(-50vw + 50%) !important;
+            margin-right: calc(-50vw + 50%) !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
         }
         
         /* Ensure expander content is also full width */
         [data-testid="stExpander"].full-width-expander > div {
             max-width: 100% !important;
             width: 100% !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
         
         [data-testid="stExpander"].full-width-expander [data-testid="stExpanderContent"] {
             max-width: 100% !important;
             width: 100% !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        
+        /* Make all inner content full width */
+        [data-testid="stExpander"].full-width-expander * {
+            max-width: 100% !important;
+        }
+        
+        /* Remove padding from parent column when expander is full width */
+        [data-testid="column"]:has([data-testid="stExpander"].full-width-expander) {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            max-width: 100vw !important;
         }
     </style>
     <script>
@@ -1441,6 +1515,35 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                 if (isExpanded) {
                     // Make full width when expanded - break out of container
                     expander.classList.add('full-width-expander');
+                    
+                    // Calculate offset to break out of container
+                    const mainContainer = document.querySelector('[data-testid="stAppViewContainer"]') || 
+                                         document.querySelector('.main') ||
+                                         document.body;
+                    const containerRect = mainContainer.getBoundingClientRect();
+                    const containerWidth = containerRect.width;
+                    const viewportWidth = window.innerWidth;
+                    const offset = (viewportWidth - containerWidth) / 2;
+                    
+                    // Apply full-width styles
+                    expander.style.width = '100vw';
+                    expander.style.maxWidth = '100vw';
+                    expander.style.position = 'relative';
+                    expander.style.left = `calc(-50vw + 50% + ${offset}px)`;
+                    expander.style.marginLeft = `calc(-50vw + 50% + ${offset}px)`;
+                    expander.style.marginRight = `calc(-50vw + 50% + ${offset}px)`;
+                    expander.style.paddingLeft = `calc(50vw - 50% - ${offset}px)`;
+                    expander.style.paddingRight = `calc(50vw - 50% - ${offset}px)`;
+                    expander.style.zIndex = '1000';
+                    
+                    // Make content full width
+                    const content = expander.querySelector('[data-testid="stExpanderContent"]');
+                    if (content) {
+                        content.style.maxWidth = '100%';
+                        content.style.width = '100%';
+                        content.style.paddingLeft = `calc(50vw - 50% - ${offset}px)`;
+                        content.style.paddingRight = `calc(50vw - 50% - ${offset}px)`;
+                    }
                 } else {
                     // Reset to normal width when collapsed
                     expander.classList.remove('full-width-expander');
@@ -1451,7 +1554,18 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                     expander.style.right = '';
                     expander.style.marginLeft = '';
                     expander.style.marginRight = '';
+                    expander.style.paddingLeft = '';
+                    expander.style.paddingRight = '';
                     expander.style.zIndex = '';
+                    
+                    // Reset content
+                    const content = expander.querySelector('[data-testid="stExpanderContent"]');
+                    if (content) {
+                        content.style.maxWidth = '';
+                        content.style.width = '';
+                        content.style.paddingLeft = '';
+                        content.style.paddingRight = '';
+                    }
                 }
             });
         }
@@ -1500,6 +1614,58 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(makeExpanderFullWidth, 100);
         });
+        
+        // Make table header sticky
+        function makeHeaderSticky() {
+            // Find all horizontal blocks (columns containers)
+            const horizontalBlocks = document.querySelectorAll('[data-testid="stHorizontalBlock"]');
+            
+            for (let block of horizontalBlocks) {
+                const columns = block.querySelectorAll('[data-testid="column"]');
+                if (columns.length < 6) continue;
+                
+                // Check if this block contains header text
+                let hasTopic = false;
+                let hasImportance = false;
+                let hasCoverage = false;
+                let hasMentions = false;
+                let hasSentiment = false;
+                let hasSummary = false;
+                
+                for (let col of columns) {
+                    const text = (col.textContent || col.innerText || '').trim().toLowerCase();
+                    if (text.includes('topic') && !text.includes('topic_id')) hasTopic = true;
+                    if (text.includes('importance')) hasImportance = true;
+                    if (text.includes('coverage')) hasCoverage = true;
+                    if (text.includes('mentions')) hasMentions = true;
+                    if (text.includes('sentiment')) hasSentiment = true;
+                    if (text.includes('summary')) hasSummary = true;
+                }
+                
+                // If it has all header columns, make it sticky
+                if (hasTopic && hasImportance && hasCoverage && hasMentions && hasSentiment && hasSummary) {
+                    block.classList.add('explore-table-header');
+                    // Also ensure all child columns have white background
+                    columns.forEach(col => {
+                        col.style.backgroundColor = 'white';
+                    });
+                    break; // Found the header, stop searching
+                }
+            }
+        }
+        
+        // Run header sticky on load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', makeHeaderSticky);
+        } else {
+            setTimeout(makeHeaderSticky, 100);
+        }
+        
+        // Reapply on Streamlit updates
+        const headerObserver = new MutationObserver(() => {
+            setTimeout(makeHeaderSticky, 200);
+        });
+        headerObserver.observe(document.body, { childList: true, subtree: true });
     </script>
     """, unsafe_allow_html=True)
     
@@ -2122,15 +2288,36 @@ def apply_brand_styles():
             background: none !important;
         }}
         
-        /* Remove any red/pink colors completely */
+        /* Remove ALL red/pink borders and underlines - AGGRESSIVE */
         .stTabs [data-baseweb="tab"] [style*="rgb(255, 75, 75)"],
         .stTabs [data-baseweb="tab"] [style*="rgb(239, 68, 68)"],
         .stTabs [data-baseweb="tab"] [style*="rgb(255, 107, 107)"],
         .stTabs [data-baseweb="tab"] [style*="#ff4b4b"],
-        .stTabs [data-baseweb="tab"] [style*="#ef4444"] {{
+        .stTabs [data-baseweb="tab"] [style*="#ef4444"],
+        .stTabs [data-baseweb="tab"] [style*="border-bottom"][style*="rgb(255"],
+        .stTabs [data-baseweb="tab"] [style*="border-bottom"][style*="#ff"] {{
             border: none !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
             background-color: transparent !important;
             color: {brand_color} !important;
+        }}
+        
+        /* Force remove red borders from tab children */
+        .stTabs [data-baseweb="tab"] * {{
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+        }}
+        
+        /* Only allow brand color border on active tab */
+        .stTabs [aria-selected="true"] * {{
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
         }}
         
         /* Sidebar headers */
@@ -2253,7 +2440,7 @@ def apply_brand_styles():
         const observer = new MutationObserver(applyBrandColors);
         observer.observe(document.body, {{ childList: true, subtree: true }});
         
-        // Fix tabs - ONLY ONE underline, NO red/pink
+        // Fix tabs - ONLY ONE underline with brand color, NO red/pink
         function fixTabs() {{
             const brandColor = '{brand_color}';
             
@@ -2267,21 +2454,35 @@ def apply_brand_styles():
                 tab.style.borderBottom = 'none';
                 tab.style.background = 'none';
                 
-                // Remove from ALL children recursively
+                // Remove from ALL children recursively - AGGRESSIVE
                 const removeBorders = (element) => {{
                     element.style.borderTop = 'none';
                     element.style.borderLeft = 'none';
                     element.style.borderRight = 'none';
                     element.style.borderBottom = 'none';
                     
-                    // Check computed style for red/pink borders
+                    // Check computed style for red/pink borders and force remove
                     const computed = window.getComputedStyle(element);
                     if (computed.borderBottom && (
                         computed.borderBottom.includes('rgb(255, 75, 75)') ||
                         computed.borderBottom.includes('rgb(239, 68, 68)') ||
-                        computed.borderBottom.includes('rgb(255, 107, 107)')
+                        computed.borderBottom.includes('rgb(255, 107, 107)') ||
+                        computed.borderBottom.includes('#ff4b4b') ||
+                        computed.borderBottom.includes('#ef4444')
                     )) {{
                         element.style.borderBottom = 'none';
+                        element.style.setProperty('border-bottom', 'none', 'important');
+                    }}
+                    
+                    // Remove any inline styles with red colors
+                    if (element.style.borderBottom && (
+                        element.style.borderBottom.includes('rgb(255, 75, 75)') ||
+                        element.style.borderBottom.includes('rgb(239, 68, 68)') ||
+                        element.style.borderBottom.includes('#ff4b4b') ||
+                        element.style.borderBottom.includes('#ef4444')
+                    )) {{
+                        element.style.borderBottom = 'none';
+                        element.style.setProperty('border-bottom', 'none', 'important');
                     }}
                     
                     Array.from(element.children).forEach(child => removeBorders(child));
@@ -2297,13 +2498,18 @@ def apply_brand_styles():
                 tab.style.borderTop = 'none';
                 tab.style.borderLeft = 'none';
                 tab.style.borderRight = 'none';
+                tab.style.setProperty('border-bottom', `2px solid ${{brandColor}}`, 'important');
                 
-                // Ensure children don't have borders
+                // Force remove borders from ALL children
                 tab.querySelectorAll('*').forEach(child => {{
                     child.style.borderTop = 'none';
                     child.style.borderLeft = 'none';
                     child.style.borderRight = 'none';
                     child.style.borderBottom = 'none';
+                    child.style.setProperty('border-top', 'none', 'important');
+                    child.style.setProperty('border-left', 'none', 'important');
+                    child.style.setProperty('border-right', 'none', 'important');
+                    child.style.setProperty('border-bottom', 'none', 'important');
                 }});
             }});
         }}
