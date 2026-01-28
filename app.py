@@ -711,7 +711,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     other_topics = [tid for tid in available_topic_ids if tid not in top_n_ids]
     
     if other_topics:
-        st.sidebar.subheader("Add Topic")
+        st.sidebar.markdown("**Add Topic**")
         
         # Add search box for filtering
         search_query = st.sidebar.text_input(
@@ -756,7 +756,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.divider()
     
     # Filters
-    st.sidebar.subheader("Filters")
+    st.sidebar.markdown("**Filters**")
     
     # Coverage tier
     coverage_tier = st.sidebar.selectbox(
@@ -793,7 +793,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.divider()
     
     # Participant filter (regex denylist)
-    st.sidebar.subheader("Participant Filter")
+    st.sidebar.markdown("**Participant Filter**")
     st.sidebar.caption("Filter out participants matching regex patterns (e.g., 'moderator|admin')")
     filter_pattern_input = st.sidebar.text_input(
         "Regex patterns (pipe-separated)",
@@ -811,7 +811,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.divider()
     
     # Export buttons
-    st.sidebar.subheader("Export")
+    st.sidebar.markdown("**Export**")
     
     # Build digest for export
     selected_topic_ids = st.session_state.get(SESSION_KEYS['selected_topics'], [])
@@ -1500,7 +1500,131 @@ def apply_brand_styles():
             --brand-color-hover: {brand_color_hover};
         }}
         
-        /* Primary buttons */
+        /* Compact Sidebar */
+        .stSidebar {{
+            font-size: 0.85rem;
+        }}
+        
+        .stSidebar [data-testid="stHeader"] {{
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+        }}
+        
+        .stSidebar [data-testid="stSubheader"] {{
+            font-size: 0.95rem;
+            margin-top: 0.75rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+        }}
+        
+        .stSidebar [data-testid="stMarkdownContainer"] {{
+            margin-bottom: 0.25rem;
+        }}
+        
+        .stSidebar .stDivider {{
+            margin: 0.5rem 0;
+        }}
+        
+        /* Compact buttons */
+        .stSidebar .stButton > button {{
+            background-color: {brand_color};
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            height: auto;
+            min-height: 2rem;
+        }}
+        
+        .stSidebar .stButton > button:hover {{
+            background-color: {brand_color_hover};
+            box-shadow: 0 2px 8px rgba(101, 92, 254, 0.3);
+        }}
+        
+        /* Compact download buttons */
+        .stSidebar .stDownloadButton > button {{
+            background-color: {brand_color};
+            color: white;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+            height: auto;
+            min-height: 2rem;
+        }}
+        
+        .stSidebar .stDownloadButton > button:hover {{
+            background-color: {brand_color_hover};
+        }}
+        
+        /* Compact inputs */
+        .stSidebar input, .stSidebar select {{
+            font-size: 0.85rem;
+            padding: 0.35rem 0.5rem;
+        }}
+        
+        .stSidebar [data-baseweb="select"] {{
+            font-size: 0.85rem;
+        }}
+        
+        /* Compact multiselect */
+        .stSidebar [data-baseweb="select"] > div {{
+            padding: 0.35rem 0.5rem;
+            font-size: 0.85rem;
+        }}
+        
+        /* Brand color checkboxes */
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked {{
+            background-color: {brand_color};
+            border-color: {brand_color};
+        }}
+        
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:checked + span {{
+            background-color: {brand_color};
+            border-color: {brand_color};
+        }}
+        
+        .stSidebar [data-baseweb="checkbox"] input[type="checkbox"]:focus {{
+            box-shadow: 0 0 0 0.2rem rgba(101, 92, 254, 0.25);
+        }}
+        
+        /* Compact slider */
+        .stSidebar .stSlider {{
+            margin: 0.5rem 0;
+        }}
+        
+        .stSidebar .stSlider > div > div > div {{
+            background-color: {brand_color};
+        }}
+        
+        /* Compact file uploader */
+        .stSidebar .stFileUploader {{
+            font-size: 0.85rem;
+        }}
+        
+        .stSidebar .stFileUploader > div > div {{
+            border-color: {brand_color};
+            padding: 0.5rem;
+        }}
+        
+        /* Compact captions */
+        .stSidebar [data-testid="stCaption"] {{
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }}
+        
+        /* Remove red error/warning colors */
+        .stSidebar .stAlert {{
+            border-left-color: {brand_color} !important;
+        }}
+        
+        .stSidebar [data-baseweb="notification"] {{
+            border-left-color: {brand_color} !important;
+        }}
+        
+        /* Primary buttons (main area) */
         .stButton > button {{
             background-color: {brand_color};
             color: white;
@@ -1516,7 +1640,7 @@ def apply_brand_styles():
             box-shadow: 0 2px 8px rgba(101, 92, 254, 0.3);
         }}
         
-        /* Download buttons */
+        /* Download buttons (main area) */
         .stDownloadButton > button {{
             background-color: {brand_color};
             color: white;
@@ -1593,6 +1717,17 @@ def apply_brand_styles():
         /* Success messages */
         .stSuccess {{
             border-left: 4px solid {brand_color};
+        }}
+        
+        /* Remove red from warnings/errors */
+        .stWarning {{
+            border-left-color: #f59e0b !important;
+            background-color: rgba(245, 158, 11, 0.1) !important;
+        }}
+        
+        .stError {{
+            border-left-color: {brand_color} !important;
+            background-color: rgba(101, 92, 254, 0.1) !important;
         }}
     </style>
     """, unsafe_allow_html=True)
