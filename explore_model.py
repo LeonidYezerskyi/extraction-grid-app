@@ -38,6 +38,9 @@ class ExploreTopic:
     source_document: Optional[str] = None  # For future use - document/file reference
     speaker_id: Optional[str] = None  # For future use - primary speaker/participant
     
+    # Ranking metadata (computed, not stored in dataclass by default)
+    # Use signal_bucket property or add to to_dict() when needed
+    
     def __post_init__(self):
         """Validate and normalize values after initialization."""
         # Ensure numeric fields are within valid ranges
@@ -59,9 +62,36 @@ class ExploreTopic:
         if self.summary_text is None:
             self.summary_text = ""
     
-    def to_dict(self) -> dict:
-        """Convert to dictionary for DataFrame construction."""
-        return {
+    def get_signal_bucket(self) -> Literal["high", "medium", "low"]:
+        """
+        Compute signal bucket based on importance_score and coverage_pct.
+        
+        Rules:
+        - "high": importance_score >= 1.9 and coverage_pct >= 90
+        - "medium": importance_score >= 1.7
+        - "low": otherwise
+        
+        Returns:
+            Signal bucket: "high", "medium", or "low"
+        """
+        if self.importance_score >= 1.9 and self.coverage_pct >= 90.0:
+            return "high"
+        elif self.importance_score >= 1.7:
+            return "medium"
+        else:
+            return "low"
+    
+    def to_dict(self, include_signal_bucket: bool = False) -> dict:
+        """
+        Convert to dictionary for DataFrame construction.
+        
+        Args:
+            include_signal_bucket: If True, include computed signal_bucket in output
+        
+        Returns:
+            Dictionary with all fields
+        """
+        result = {
             'topic_id': self.topic_id,
             'topic_label': self.topic_label,
             'importance_score': self.importance_score,
@@ -73,6 +103,11 @@ class ExploreTopic:
             'source_document': self.source_document,
             'speaker_id': self.speaker_id
         }
+        
+        if include_signal_bucket:
+            result['signal_bucket'] = self.get_signal_bucket()
+        
+        return result
 
 
 def compute_sentiment_score(sentiment_mix: dict) -> Tuple[float, Literal["positive", "neutral", "negative", "mixed", "unknown"]]:
@@ -258,6 +293,62 @@ def from_dataframe_row(row: dict) -> ExploreTopic:
     )
 
 
+def rank_topics(topics: list[ExploreTopic]) -> list[ExploreTopic]:
+    """
+    Rank and sort topics with deterministic ordering and signal bucketing.
+    
+    This function provides explainable, stable topic ordering instead of 
+    "magic-score-driven" ranking. Topics are sorted by:
+    1. Primary: importance_score (descending)
+    2. Secondary: coverage_pct (descending)
+    3. Tertiary: mentions_count (descending)
+    
+    Each topic is also annotated with a signal_bucket computed via get_signal_bucket():
+    - "high": importance_score >= 1.9 and coverage_pct >= 90
+    - "medium": importance_score >= 1.7
+    - "low": otherwise
+    
+    Args:
+        topics: List of ExploreTopic instances to rank
+    
+    Returns:
+        List of ExploreTopic instances, sorted and ready for use.
+        Note: signal_bucket is computed via get_signal_bucket() method, not stored in dataclass.
+    
+    Example:
+        >>> topics = [
+        ...     ExploreTopic(topic_id='t1', topic_label='T1', importance_score=2.0, 
+        ...                  coverage_pct=95.0, mentions_count=20, sentiment_score=0.5,
+        ...                  sentiment_label='positive', summary_text='Summary 1'),
+        ...     ExploreTopic(topic_id='t2', topic_label='T2', importance_score=1.8,
+        ...                  coverage_pct=80.0, mentions_count=15, sentiment_score=0.3,
+        ...                  sentiment_label='positive', summary_text='Summary 2')
+        ... ]
+        >>> ranked = rank_topics(topics)
+        >>> ranked[0].topic_id  # Should be 't1' (higher importance_score)
+        't1'
+        >>> ranked[0].get_signal_bucket()  # Should be 'high'
+        'high'
+    """
+    if not topics:
+        return []
+    
+    # Sort topics using multi-level sorting
+    # Primary: importance_score (descending)
+    # Secondary: coverage_pct (descending)
+    # Tertiary: mentions_count (descending)
+    sorted_topics = sorted(
+        topics,
+        key=lambda t: (
+            -t.importance_score,  # Negative for descending order
+            -t.coverage_pct,      # Negative for descending order
+            -t.mentions_count     # Negative for descending order
+        )
+    )
+    
+    return sorted_topics
+
+
 # Unit tests
 if __name__ == '__main__':
     import unittest
@@ -376,6 +467,146 @@ if __name__ == '__main__':
             )
             
             self.assertEqual(topic.sentiment_label, 'unknown')
+        
+        def test_get_signal_bucket_high(self):
+            """Test signal bucket assignment for high signal."""
+            topic = ExploreTopic(
+                topic_id='test',
+                topic_label='Test',
+                importance_score=2.0,  # >= 1.9
+                coverage_pct=95.0,  # >= 90
+                mentions_count=20,
+                sentiment_score=0.5,
+                sentiment_label='positive',
+                summary_text='Test'
+            )
+            
+            self.assertEqual(topic.get_signal_bucket(), 'high')
+        
+        def test_get_signal_bucket_medium(self):
+            """Test signal bucket assignment for medium signal."""
+            # Test with importance_score >= 1.7 but not high
+            topic1 = ExploreTopic(
+                topic_id='test1',
+                topic_label='Test1',
+                importance_score=1.8,  # >= 1.7 but < 1.9
+                coverage_pct=80.0,  # < 90
+                mentions_count=15,
+                sentiment_score=0.3,
+                sentiment_label='positive',
+                summary_text='Test'
+            )
+            
+            self.assertEqual(topic1.get_signal_bucket(), 'medium')
+            
+            # Test with importance_score >= 1.9 but coverage < 90
+            topic2 = ExploreTopic(
+                topic_id='test2',
+                topic_label='Test2',
+                importance_score=2.0,  # >= 1.9
+                coverage_pct=85.0,  # < 90
+                mentions_count=15,
+                sentiment_score=0.3,
+                sentiment_label='positive',
+                summary_text='Test'
+            )
+            
+            self.assertEqual(topic2.get_signal_bucket(), 'medium')
+        
+        def test_get_signal_bucket_low(self):
+            """Test signal bucket assignment for low signal."""
+            topic = ExploreTopic(
+                topic_id='test',
+                topic_label='Test',
+                importance_score=1.5,  # < 1.7
+                coverage_pct=70.0,
+                mentions_count=10,
+                sentiment_score=0.0,
+                sentiment_label='neutral',
+                summary_text='Test'
+            )
+            
+            self.assertEqual(topic.get_signal_bucket(), 'low')
+        
+        def test_rank_topics_primary_sort(self):
+            """Test ranking by primary sort (importance_score)."""
+            topics = [
+                ExploreTopic(topic_id='t1', topic_label='T1', importance_score=1.5,
+                            coverage_pct=80.0, mentions_count=10, sentiment_score=0.5,
+                            sentiment_label='positive', summary_text='Summary 1'),
+                ExploreTopic(topic_id='t2', topic_label='T2', importance_score=2.0,
+                            coverage_pct=70.0, mentions_count=5, sentiment_score=0.3,
+                            sentiment_label='positive', summary_text='Summary 2'),
+                ExploreTopic(topic_id='t3', topic_label='T3', importance_score=1.8,
+                            coverage_pct=90.0, mentions_count=15, sentiment_score=0.4,
+                            sentiment_label='positive', summary_text='Summary 3')
+            ]
+            
+            ranked = rank_topics(topics)
+            
+            # Should be sorted by importance_score descending
+            self.assertEqual(ranked[0].topic_id, 't2')  # 2.0
+            self.assertEqual(ranked[1].topic_id, 't3')  # 1.8
+            self.assertEqual(ranked[2].topic_id, 't1')  # 1.5
+        
+        def test_rank_topics_secondary_sort(self):
+            """Test ranking by secondary sort (coverage_pct) when importance_score is equal."""
+            topics = [
+                ExploreTopic(topic_id='t1', topic_label='T1', importance_score=2.0,
+                            coverage_pct=80.0, mentions_count=10, sentiment_score=0.5,
+                            sentiment_label='positive', summary_text='Summary 1'),
+                ExploreTopic(topic_id='t2', topic_label='T2', importance_score=2.0,
+                            coverage_pct=95.0, mentions_count=5, sentiment_score=0.3,
+                            sentiment_label='positive', summary_text='Summary 2'),
+                ExploreTopic(topic_id='t3', topic_label='T3', importance_score=2.0,
+                            coverage_pct=70.0, mentions_count=15, sentiment_score=0.4,
+                            sentiment_label='positive', summary_text='Summary 3')
+            ]
+            
+            ranked = rank_topics(topics)
+            
+            # Should be sorted by coverage_pct descending (secondary sort)
+            self.assertEqual(ranked[0].topic_id, 't2')  # 95.0
+            self.assertEqual(ranked[1].topic_id, 't1')  # 80.0
+            self.assertEqual(ranked[2].topic_id, 't3')  # 70.0
+        
+        def test_rank_topics_tertiary_sort(self):
+            """Test ranking by tertiary sort (mentions_count) when importance and coverage are equal."""
+            topics = [
+                ExploreTopic(topic_id='t1', topic_label='T1', importance_score=2.0,
+                            coverage_pct=90.0, mentions_count=10, sentiment_score=0.5,
+                            sentiment_label='positive', summary_text='Summary 1'),
+                ExploreTopic(topic_id='t2', topic_label='T2', importance_score=2.0,
+                            coverage_pct=90.0, mentions_count=20, sentiment_score=0.3,
+                            sentiment_label='positive', summary_text='Summary 2'),
+                ExploreTopic(topic_id='t3', topic_label='T3', importance_score=2.0,
+                            coverage_pct=90.0, mentions_count=5, sentiment_score=0.4,
+                            sentiment_label='positive', summary_text='Summary 3')
+            ]
+            
+            ranked = rank_topics(topics)
+            
+            # Should be sorted by mentions_count descending (tertiary sort)
+            self.assertEqual(ranked[0].topic_id, 't2')  # 20
+            self.assertEqual(ranked[1].topic_id, 't1')  # 10
+            self.assertEqual(ranked[2].topic_id, 't3')  # 5
+        
+        def test_rank_topics_empty_list(self):
+            """Test ranking with empty list."""
+            ranked = rank_topics([])
+            self.assertEqual(ranked, [])
+        
+        def test_rank_topics_single_topic(self):
+            """Test ranking with single topic."""
+            topics = [
+                ExploreTopic(topic_id='t1', topic_label='T1', importance_score=2.0,
+                            coverage_pct=95.0, mentions_count=20, sentiment_score=0.5,
+                            sentiment_label='positive', summary_text='Summary 1')
+            ]
+            
+            ranked = rank_topics(topics)
+            self.assertEqual(len(ranked), 1)
+            self.assertEqual(ranked[0].topic_id, 't1')
     
     unittest.main()
 
