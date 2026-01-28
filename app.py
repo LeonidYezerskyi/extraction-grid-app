@@ -1365,7 +1365,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     # Summary truncation length
     SUMMARY_TRUNCATE_LENGTH = 100
     
-    # Add CSS for frozen first column effect
+    # Add CSS for frozen first column effect and full-width expander
     st.markdown("""
     <style>
         /* Style for Explore table - frozen first column effect */
@@ -1381,7 +1381,126 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             z-index: 1;
             padding-right: 16px;
         }
+        
+        /* Full-width expander when open - for "Show full summary" only */
+        [data-testid="stExpander"].full-width-expander {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            position: relative !important;
+            left: 50% !important;
+            right: 50% !important;
+            margin-left: -50vw !important;
+            margin-right: -50vw !important;
+            z-index: 1000 !important;
+        }
+        
+        /* Ensure expander content is also full width */
+        [data-testid="stExpander"].full-width-expander > div {
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+        
+        [data-testid="stExpander"].full-width-expander [data-testid="stExpanderContent"] {
+            max-width: 100% !important;
+            width: 100% !important;
+        }
     </style>
+    <script>
+        // Make "Show full summary" expander full-width when open
+        function makeExpanderFullWidth() {
+            // Find all expanders
+            document.querySelectorAll('[data-testid="stExpander"]').forEach(expander => {
+                const button = expander.querySelector('button');
+                if (!button) return;
+                
+                // Check if this is a "Show full summary" expander (with or without emoji)
+                const buttonText = button.textContent || button.innerText || '';
+                const isSummaryExpander = buttonText.includes('Show full summary') || 
+                                         buttonText.includes('full summary') ||
+                                         buttonText.includes('📖 Show full summary');
+                
+                if (!isSummaryExpander) {
+                    // Reset any styles if not a summary expander
+                    expander.classList.remove('full-width-expander');
+                    expander.style.width = '';
+                    expander.style.maxWidth = '';
+                    expander.style.position = '';
+                    expander.style.left = '';
+                    expander.style.right = '';
+                    expander.style.marginLeft = '';
+                    expander.style.marginRight = '';
+                    expander.style.zIndex = '';
+                    return;
+                }
+                
+                // Check if expanded
+                const isExpanded = button.getAttribute('aria-expanded') === 'true' || 
+                                   expander.classList.contains('streamlit-expanderHeader--is-open') ||
+                                   button.classList.contains('streamlit-expanderHeader--is-open');
+                
+                if (isExpanded) {
+                    // Make full width when expanded - break out of container
+                    expander.classList.add('full-width-expander');
+                } else {
+                    // Reset to normal width when collapsed
+                    expander.classList.remove('full-width-expander');
+                    expander.style.width = '';
+                    expander.style.maxWidth = '';
+                    expander.style.position = '';
+                    expander.style.left = '';
+                    expander.style.right = '';
+                    expander.style.marginLeft = '';
+                    expander.style.marginRight = '';
+                    expander.style.zIndex = '';
+                }
+            });
+        }
+        
+        // Run on load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', makeExpanderFullWidth);
+        } else {
+            makeExpanderFullWidth();
+        }
+        
+        // Watch for changes (when expander is clicked or aria-expanded changes)
+        const expanderObserver = new MutationObserver((mutations) => {
+            let shouldUpdate = false;
+            mutations.forEach(mutation => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded') {
+                    shouldUpdate = true;
+                }
+                if (mutation.type === 'childList') {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                setTimeout(makeExpanderFullWidth, 50);
+            }
+        });
+        
+        expanderObserver.observe(document.body, { 
+            childList: true, 
+            subtree: true, 
+            attributes: true, 
+            attributeFilter: ['aria-expanded', 'class'] 
+        });
+        
+        // Listen for click events on expander buttons
+        document.addEventListener('click', function(e) {
+            const expanderButton = e.target.closest('[data-testid="stExpander"] button');
+            if (expanderButton) {
+                setTimeout(makeExpanderFullWidth, 150);
+            }
+        });
+        
+        // Also run on window resize
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(makeExpanderFullWidth, 100);
+        });
+    </script>
     """, unsafe_allow_html=True)
     
     # Table header
