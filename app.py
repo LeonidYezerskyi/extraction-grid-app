@@ -1849,14 +1849,37 @@ def apply_brand_styles():
             color: {brand_color} !important;
         }}
         
-        /* Override inline styles with red colors */
-        [style*="rgb(255, 75, 75)"],
-        [style*="rgb(239, 68, 68)"],
-        [style*="#ff4b4b"],
-        [style*="#ef4444"] {{
+        /* Override inline styles with red colors - BUT exclude sentiment chips */
+        [style*="rgb(255, 75, 75)"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]),
+        [style*="rgb(239, 68, 68)"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]),
+        [style*="#ff4b4b"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]),
+        [style*="#ef4444"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]) {{
             background-color: {brand_color} !important;
             border-color: {brand_color} !important;
             color: {brand_color} !important;
+        }}
+        
+        /* Ensure sentiment chips keep their colors - override brand color CSS */
+        span[style*="background-color: #22c55e"] {{
+            background-color: #22c55e !important;
+            color: white !important;
+        }}
+        span[style*="background-color: #ef4444"] {{
+            background-color: #ef4444 !important;
+            color: white !important;
+            border: none !important;
+        }}
+        span[style*="background-color: #6b7280"] {{
+            background-color: #6b7280 !important;
+            color: white !important;
+        }}
+        span[style*="background-color: #f59e0b"] {{
+            background-color: #f59e0b !important;
+            color: white !important;
+        }}
+        span[style*="background-color: #9ca3af"] {{
+            background-color: #9ca3af !important;
+            color: white !important;
         }}
         
         [data-baseweb="tag"] {{
@@ -2299,39 +2322,24 @@ def apply_brand_styles():
             border-bottom: none !important;
         }}
         
-        /* Active tab - ONLY bottom border with RED color (Streamlit default) */
+        /* Active tab - use Streamlit's default red color */
         .stTabs [aria-selected="true"] {{
             color: #ff4b4b !important;
-            border-bottom: 2px solid #ff4b4b !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-            background: none !important;
         }}
         
-        /* Remove brand color borders from tabs */
+        /* Remove ONLY brand color borders from tabs - keep Streamlit's default red */
         .stTabs [data-baseweb="tab"] [style*="{brand_color}"],
         .stTabs [data-baseweb="tab"] [style*="#655CFE"] {{
-            border: none !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
             border-bottom: none !important;
             background-color: transparent !important;
         }}
         
-        /* Force remove brand color borders from tab children */
-        .stTabs [data-baseweb="tab"] * {{
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
+        /* Ensure only ONE underline - remove duplicate borders from children */
+        .stTabs [aria-selected="true"] > * {{
+            border-bottom: none !important;
         }}
         
-        /* Only allow red border on active tab */
-        .stTabs [aria-selected="true"] * {{
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
+        .stTabs [aria-selected="true"] > * > * {{
             border-bottom: none !important;
         }}
         
@@ -2455,30 +2463,22 @@ def apply_brand_styles():
         const observer = new MutationObserver(applyBrandColors);
         observer.observe(document.body, {{ childList: true, subtree: true }});
         
-        // Fix tabs - ONLY ONE underline with RED color, remove brand color
+        // Fix tabs - remove brand color, keep Streamlit's default red underline (only ONE)
         function fixTabs() {{
             const brandColor = '{brand_color}';
             const redColor = '#ff4b4b'; // Streamlit default red
             
-            // Remove ALL borders from ALL tabs and ALL children
+            // Only remove brand color, don't touch Streamlit's default red borders
             document.querySelectorAll('[data-baseweb="tab"]').forEach(tab => {{
-                // Remove from tab element itself
-                tab.style.border = 'none';
-                tab.style.borderTop = 'none';
-                tab.style.borderLeft = 'none';
-                tab.style.borderRight = 'none';
-                tab.style.borderBottom = 'none';
-                tab.style.background = 'none';
+                // Set color for active tab
+                if (tab.getAttribute('aria-selected') === 'true') {{
+                    tab.style.color = redColor;
+                }}
                 
-                // Remove from ALL children recursively - AGGRESSIVE
-                const removeBorders = (element) => {{
-                    element.style.borderTop = 'none';
-                    element.style.borderLeft = 'none';
-                    element.style.borderRight = 'none';
-                    element.style.borderBottom = 'none';
-                    
-                    // Remove brand color borders (but keep red)
+                // Remove ONLY brand color borders from tab and all children
+                const removeBrandBorders = (element) => {{
                     const computed = window.getComputedStyle(element);
+                    // Remove brand color borders only (keep red)
                     if (computed.borderBottom && (
                         computed.borderBottom.includes(brandColor) ||
                         computed.borderBottom.includes('#655CFE')
@@ -2487,7 +2487,7 @@ def apply_brand_styles():
                         element.style.setProperty('border-bottom', 'none', 'important');
                     }}
                     
-                    // Remove any inline styles with brand color
+                    // Remove inline brand color
                     if (element.style.borderBottom && (
                         element.style.borderBottom.includes(brandColor) ||
                         element.style.borderBottom.includes('#655CFE')
@@ -2496,43 +2496,10 @@ def apply_brand_styles():
                         element.style.setProperty('border-bottom', 'none', 'important');
                     }}
                     
-                    Array.from(element.children).forEach(child => removeBorders(child));
+                    Array.from(element.children).forEach(child => removeBrandBorders(child));
                 }};
                 
-                removeBorders(tab);
-            }});
-            
-            // Set ONLY ONE bottom border with RED color on active tab (not on children)
-            document.querySelectorAll('[data-baseweb="tab"][aria-selected="true"]').forEach(tab => {{
-                tab.style.color = redColor;
-                tab.style.borderBottom = `2px solid ${{redColor}}`;
-                tab.style.borderTop = 'none';
-                tab.style.borderLeft = 'none';
-                tab.style.borderRight = 'none';
-                tab.style.setProperty('border-bottom', `2px solid ${{redColor}}`, 'important');
-                
-                // Force remove brand color borders from ALL children (but keep red)
-                tab.querySelectorAll('*').forEach(child => {{
-                    // Remove brand color borders
-                    const computed = window.getComputedStyle(child);
-                    if (computed.borderBottom && (
-                        computed.borderBottom.includes(brandColor) ||
-                        computed.borderBottom.includes('#655CFE')
-                    )) {{
-                        child.style.borderBottom = 'none';
-                        child.style.setProperty('border-bottom', 'none', 'important');
-                    }}
-                    
-                    // Remove all borders except red on the tab itself
-                    child.style.borderTop = 'none';
-                    child.style.borderLeft = 'none';
-                    child.style.borderRight = 'none';
-                    child.style.borderBottom = 'none';
-                    child.style.setProperty('border-top', 'none', 'important');
-                    child.style.setProperty('border-left', 'none', 'important');
-                    child.style.setProperty('border-right', 'none', 'important');
-                    child.style.setProperty('border-bottom', 'none', 'important');
-                }});
+                removeBrandBorders(tab);
             }});
         }}
         
