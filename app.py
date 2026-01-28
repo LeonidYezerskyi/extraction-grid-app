@@ -1238,9 +1238,9 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     # Convert to ExploreTopic model and rank (only once, cached)
     if cache_key not in st.session_state:
         explore_topics = []
-        for topic_agg in topic_aggregates:
-            topic_id = topic_agg['topic_id']
-            sentiment_mix = digest._compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
+    for topic_agg in topic_aggregates:
+        topic_id = topic_agg['topic_id']
+        sentiment_mix = digest._compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
             explore_topic = explore_model.from_topic_aggregate(topic_agg, sentiment_mix, topic_id)
             explore_topics.append(explore_topic)
         
@@ -1731,7 +1731,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                 (total_sentiments < 3 and topic.sentiment_label == 'unknown')  # Very few sentiments and all unknown
             )
             
-            st.markdown(sentiment_text)
+            # Use st.html for proper HTML rendering
+            st.html(sentiment_text)
             if is_sparse:
                 st.caption("*<span style='color: #f59e0b;'>⚠️ Low confidence</span>*", unsafe_allow_html=True)
         
@@ -1764,10 +1765,10 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             # Source documents count
             st.markdown(f"**Source Documents:** {confidence_data['source_documents_count']}")
             
-            # Sentiment distribution bar
+            # Sentiment distribution as chips/badges
             st.markdown("**Sentiment Distribution:**")
-            sentiment_bar_html = _format_sentiment_distribution_bar(confidence_data['sentiment_distribution'])
-            st.markdown(sentiment_bar_html, unsafe_allow_html=True)
+            sentiment_chips_html = render.format_sentiment_mix_html(confidence_data['sentiment_distribution'])
+            st.markdown(sentiment_chips_html, unsafe_allow_html=True)
         
         st.divider()
 
