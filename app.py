@@ -13,6 +13,8 @@ import digest
 import render
 import export
 import edge_cases
+import explore_model
+import recipient
 
 
 # Pipeline version for cache invalidation
@@ -1112,34 +1114,377 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             st.divider()
 
 
+def _format_sentiment_with_icon(sentiment_label: str) -> str:
+    """Format sentiment label with icon for visual scanning."""
+    icons = {
+        'positive': '✅',
+        'negative': '❌',
+        'neutral': '⚪',
+        'mixed': '🔄',
+        'unknown': '❓'
+    }
+    icon = icons.get(sentiment_label, '❓')
+    return f"{icon} {sentiment_label.capitalize()}"
+
+
+def _format_importance_with_rank(importance_score: float, rank: int) -> str:
+    """Format importance score with rank index."""
+    return f"{importance_score:.2f} (#{rank})"
+
+
+def _format_coverage_bar_html(coverage_pct: float, max_width: int = 100) -> str:
+    """Format coverage as HTML progress bar."""
+    width_px = int((coverage_pct / 100.0) * max_width)
+    return f'''
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: {max_width}px; height: 8px; background-color: #e5e7eb; border-radius: 4px; overflow: hidden;">
+            <div style="width: {width_px}px; height: 100%; background-color: #655CFE;"></div>
+        </div>
+        <span style="font-size: 12px; color: #374151;">{coverage_pct:.1f}%</span>
+    </div>
+    '''
+
+
+def _format_sentiment_distribution_bar(sentiment_dist: Dict[str, int]) -> str:
+    """Format sentiment distribution as HTML bar chart."""
+    total = sum(sentiment_dist.values())
+    if total == 0:
+        return '<div style="color: #9ca3af; font-size: 12px;">No sentiment data</div>'
+    
+    # Color mapping for sentiments
+    colors = {
+        'positive': '#22c55e',  # green
+        'negative': '#ef4444',  # red
+        'neutral': '#94a3b8',   # gray
+        'mixed': '#f59e0b',     # amber
+        'unknown': '#9ca3af'     # gray
+    }
+    
+    bars = []
+    for sentiment, count in sentiment_dist.items():
+        if count > 0:
+            percentage = (count / total) * 100
+            color = colors.get(sentiment, '#9ca3af')
+            bars.append(f'''
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <div style="width: 60px; font-size: 11px; color: #374151;">{sentiment.capitalize()}</div>
+                    <div style="flex: 1; height: 16px; background-color: #e5e7eb; border-radius: 2px; overflow: hidden; margin: 0 8px;">
+                        <div style="width: {percentage}%; height: 100%; background-color: {color};"></div>
+                    </div>
+                    <div style="width: 30px; font-size: 11px; color: #6b7280; text-align: right;">{count}</div>
+                </div>
+            ''')
+    
+    return '<div>' + ''.join(bars) + '</div>'
+
+
+def _get_topic_confidence_data(topic: explore_model.ExploreTopic, canonical_model) -> Dict[str, Any]:
+    """
+    Compute confidence signals for a topic.
+    
+    Returns:
+        Dictionary with:
+        - mentions_count: int
+        - source_documents_count: int (unique participants)
+        - sentiment_distribution: Dict[str, int]
+    """
+    topic_id = topic.topic_id
+    
+    # Get evidence cells for this topic
+    evidence_cells = [ec for ec in canonical_model.evidence_cells if ec.topic_id == topic_id]
+    
+    # Count unique participants (source documents)
+    unique_participants = set(ec.participant_id for ec in evidence_cells if ec.participant_id)
+    source_documents_count = len(unique_participants)
+    
+    # Get sentiment distribution
+    sentiment_distribution = digest._compute_sentiment_mix(evidence_cells, topic_id)
+    
+    return {
+        'mentions_count': topic.mentions_count,
+        'source_documents_count': source_documents_count,
+        'sentiment_distribution': sentiment_distribution
+    }
+
+
 def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
-    """Render Explore tab with table view."""
+    """
+    Render Explore tab with improved UX table view and recipient filtering.
+    
+    Features:
+    - Recipient selector for persona-based filtering
+    - Importance score with rank index
+    - Coverage as progress bar
+    - Sentiment with icons
+    - Truncated summaries with expand toggle
+    - Pagination (15 per page)
+    """
     if not topic_aggregates:
         st.info("Upload a file and compute scores to view data.")
         return
     
-    # Build dataframe
-    df_data = []
-    for topic_agg in topic_aggregates:
-        topic_id = topic_agg['topic_id']
-        sentiment_mix = digest._compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
-        total_sentiment = sum(sentiment_mix.values())
-        dominant_tone = 'unknown'
-        if total_sentiment > 0:
-            dominant_tone = max(sentiment_mix.items(), key=lambda x: x[1])[0]
-        
-        df_data.append({
-            'Topic ID': topic_id,
-            'Score': round(topic_agg.get('topic_score', 0), 3),
-            'Coverage %': round(topic_agg.get('coverage_rate', 0) * 100, 1),
-            'Evidence': topic_agg.get('evidence_count', 0),
-            'Intensity': round(topic_agg.get('intensity_rate', 0), 2),
-            'Tone': dominant_tone,
-            'One-liner': render.format_topic_oneliner(topic_agg.get('topic_one_liner', ''))
-        })
+    # Cache key for base ranked topics (to avoid recomputation)
+    cache_key = f"explore_base_ranked_topics_{hash(str(topic_aggregates))}"
     
-    df = pd.DataFrame(df_data)
-    st.dataframe(df, width='stretch', hide_index=True)
+    # Convert to ExploreTopic model and rank (only once, cached)
+    if cache_key not in st.session_state:
+        explore_topics = []
+        for topic_agg in topic_aggregates:
+            topic_id = topic_agg['topic_id']
+            sentiment_mix = digest._compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
+            explore_topic = explore_model.from_topic_aggregate(topic_agg, sentiment_mix, topic_id)
+            explore_topics.append(explore_topic)
+        
+        # Rank topics (base ranking, before recipient filtering)
+        ranked_topics = explore_model.rank_topics(explore_topics)
+        st.session_state[cache_key] = ranked_topics
+    else:
+        ranked_topics = st.session_state[cache_key]
+    
+    # Get available recipients
+    default_recipients = recipient.create_default_recipients()
+    
+    # Ensure "General" is the first option
+    recipient_options = {r.recipient_id: r for r in default_recipients}
+    if "general" not in recipient_options:
+        recipient_options["general"] = recipient.RecipientProfile(
+            recipient_id="general",
+            label="General",
+            priority_topics=[],
+            deprioritized_topics=[]
+        )
+    
+    # Recipient selector - ensure "general" is first
+    recipient_ids = list(recipient_options.keys())
+    # Sort to put "general" first, then others
+    recipient_ids = sorted(recipient_ids, key=lambda x: (x != "general", x))
+    recipient_labels = [recipient_options[rid].label for rid in recipient_ids]
+    
+    # Initialize selected recipient (default to "general")
+    if 'explore_selected_recipient' not in st.session_state:
+        st.session_state['explore_selected_recipient'] = "general"
+    
+    # Track previous recipient to detect changes
+    previous_recipient = st.session_state.get('explore_previous_recipient', None)
+    
+    # Create selectbox for recipient selection
+    selected_recipient_idx = recipient_ids.index(st.session_state['explore_selected_recipient']) if st.session_state['explore_selected_recipient'] in recipient_ids else 0
+    selected_label = st.selectbox(
+        "View for:",
+        options=recipient_labels,
+        index=selected_recipient_idx,
+        key='explore_recipient_selector',
+        help="Select a recipient persona to filter topics"
+    )
+    
+    # Update session state with selected recipient ID
+    selected_recipient_id = recipient_ids[recipient_labels.index(selected_label)]
+    
+    # Detect recipient change and reset page to avoid out-of-bounds
+    if previous_recipient != selected_recipient_id:
+        st.session_state['explore_page'] = 1
+        st.session_state['explore_previous_recipient'] = selected_recipient_id
+    
+    st.session_state['explore_selected_recipient'] = selected_recipient_id
+    
+    # Get selected recipient profile
+    selected_recipient = recipient_options[selected_recipient_id]
+    
+    # Apply recipient filtering (instant, no recomputation)
+    filtered_topics = recipient.filter_topics_for_recipient(ranked_topics, selected_recipient)
+    
+    # Show active recipient label
+    st.markdown(f"### 📊 Explore Topics — *{selected_recipient.label}*")
+    
+    # Empty state: No topics after recipient filtering
+    if not filtered_topics:
+        if len(ranked_topics) == 0:
+            # No topics at all in the data
+            st.warning("⚠️ **No topics found in the uploaded data.**\n\nPlease check your file and ensure it contains valid topic data.")
+        else:
+            # Topics exist but were filtered out
+            deprioritized_topics = [t for t in ranked_topics 
+                                   if t.topic_id.lower().strip() in [tid.lower().strip() 
+                                                                     for tid in selected_recipient.deprioritized_topics]]
+            has_deprioritized = len(deprioritized_topics) > 0
+            has_priority = len(selected_recipient.priority_topics) > 0
+            
+            explanation_parts = []
+            if has_deprioritized:
+                explanation_parts.append(f"- {len(deprioritized_topics)} topic(s) are deprioritized for this recipient")
+                explanation_parts.append("- Deprioritized topics are hidden unless they have high signal (importance ≥ 1.9 and coverage ≥ 90%)")
+            if has_priority:
+                explanation_parts.append(f"- Priority topics are boosted but may still be filtered if they don't meet signal thresholds")
+            
+            if not explanation_parts:
+                explanation_parts.append("- The recipient filter may be too restrictive")
+            
+            st.warning(
+                f"⚠️ **No topics match the current filter for *{selected_recipient.label}*.**\n\n"
+                f"**Why this happened:**\n" + "\n".join(explanation_parts) + "\n\n"
+                f"**What to try:**\n"
+                f"- Select 'General' recipient to see all {len(ranked_topics)} topics\n"
+                f"- Check the recipient's priority and deprioritized topic settings\n"
+                f"- Verify that topics meet the signal thresholds"
+            )
+        return
+    
+    # Show topic count caption
+    if selected_recipient.priority_topics or selected_recipient.deprioritized_topics:
+        filtered_count = len(filtered_topics)
+        total_count = len(ranked_topics)
+        if filtered_count < total_count:
+            st.info(f"ℹ️ Showing {filtered_count} of {total_count} topics (filtered for {selected_recipient.label})")
+        else:
+            st.caption(f"Showing all {filtered_count} topics")
+    else:
+        st.caption(f"Showing all {len(filtered_topics)} topics")
+    
+    # Pagination (on filtered topics)
+    items_per_page = 15
+    total_pages = (len(filtered_topics) + items_per_page - 1) // items_per_page
+    
+    if total_pages > 1:
+        page = st.number_input(
+            "Page",
+            min_value=1,
+            max_value=total_pages,
+            value=1,
+            key='explore_page',
+            help=f"Showing {items_per_page} topics per page"
+        )
+        start_idx = (page - 1) * items_per_page
+        end_idx = start_idx + items_per_page
+        page_topics = filtered_topics[start_idx:end_idx]
+        st.caption(f"Page {page} of {total_pages} ({len(filtered_topics)} total topics)")
+    else:
+        page_topics = filtered_topics
+        page = 1
+        start_idx = 0
+    
+    # Summary truncation length
+    SUMMARY_TRUNCATE_LENGTH = 100
+    
+    # Add CSS for frozen first column effect
+    st.markdown("""
+    <style>
+        /* Style for Explore table - frozen first column effect */
+        .explore-table-row {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 0;
+        }
+        /* Make topic column stand out (frozen effect) */
+        div[data-testid="column"]:first-child {
+            position: sticky;
+            left: 0;
+            background-color: white;
+            z-index: 1;
+            padding-right: 16px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Table header
+    header_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 3])
+    with header_cols[0]:
+        st.markdown("**Topic**")
+    with header_cols[1]:
+        st.markdown("**Importance**")
+    with header_cols[2]:
+        st.markdown("**Coverage**")
+    with header_cols[3]:
+        st.markdown("**Mentions**")
+    with header_cols[4]:
+        st.markdown("**Sentiment**")
+    with header_cols[5]:
+        st.markdown("**Summary**")
+    
+    st.divider()
+    
+    # Render rows
+    for idx, topic in enumerate(page_topics):
+        rank = start_idx + idx + 1 if total_pages > 1 else idx + 1
+        
+        row_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 3])
+        
+        with row_cols[0]:
+            # Topic label (frozen column effect via styling)
+            st.markdown(f"**{topic.topic_label}**")
+            st.caption(topic.topic_id)
+        
+        with row_cols[1]:
+            # Importance score with rank
+            importance_text = _format_importance_with_rank(topic.importance_score, rank)
+            st.markdown(importance_text)
+            # Show signal bucket as subtle indicator
+            bucket = topic.get_signal_bucket()
+            st.caption(f"Signal: {bucket}")
+        
+        with row_cols[2]:
+            # Coverage as progress bar
+            coverage_html = _format_coverage_bar_html(topic.coverage_pct)
+            st.markdown(coverage_html, unsafe_allow_html=True)
+        
+        with row_cols[3]:
+            # Mentions count
+            st.markdown(f"**{topic.mentions_count}**")
+        
+        with row_cols[4]:
+            # Sentiment with icon
+            sentiment_text = _format_sentiment_with_icon(topic.sentiment_label)
+            
+            # Check for sparse sentiment data (low confidence)
+            confidence_data = _get_topic_confidence_data(topic, canonical_model)
+            sentiment_dist = confidence_data.get('sentiment_distribution', {})
+            total_sentiments = sum(sentiment_dist.values())
+            unknown_count = sentiment_dist.get('unknown', 0)
+            
+            # Show "Low confidence" warning if sentiment data is sparse
+            is_sparse = (
+                total_sentiments == 0 or  # No sentiment data
+                (total_sentiments > 0 and unknown_count / total_sentiments > 0.7) or  # >70% unknown
+                (total_sentiments < 3 and topic.sentiment_label == 'unknown')  # Very few sentiments and all unknown
+            )
+            
+            st.markdown(sentiment_text)
+            if is_sparse:
+                st.caption("*<span style='color: #f59e0b;'>⚠️ Low confidence</span>*", unsafe_allow_html=True)
+        
+        with row_cols[5]:
+            # Summary with truncation and expand toggle
+            summary_full = topic.summary_text
+            # Handle missing summaries with placeholder
+            if not summary_full or summary_full.strip() == "":
+                st.markdown("*<span style='color: #9ca3af; font-style: italic;'>No summary available</span>*", unsafe_allow_html=True)
+            else:
+                summary_truncated = render.truncate(summary_full, SUMMARY_TRUNCATE_LENGTH)
+                is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
+                
+                if is_truncated:
+                    # Show truncated text
+                    st.markdown(summary_truncated)
+                    # Expand/collapse using expander (local state only)
+                    with st.expander("📖 Show full summary", expanded=False):
+                        st.markdown(summary_full)
+                else:
+                    # Show full text if not truncated
+                    st.markdown(summary_full)
+        
+        # Confidence section (collapsible)
+        confidence_data = _get_topic_confidence_data(topic, canonical_model)
+        with st.expander(f"🔍 Confidence Signals — {topic.topic_label}", expanded=False):
+            # Mentions count
+            st.markdown(f"**Mentions:** {confidence_data['mentions_count']}")
+            
+            # Source documents count
+            st.markdown(f"**Source Documents:** {confidence_data['source_documents_count']}")
+            
+            # Sentiment distribution bar
+            st.markdown("**Sentiment Distribution:**")
+            sentiment_bar_html = _format_sentiment_distribution_bar(confidence_data['sentiment_distribution'])
+            st.markdown(sentiment_bar_html, unsafe_allow_html=True)
+        
+        st.divider()
 
 
 def apply_brand_styles():
