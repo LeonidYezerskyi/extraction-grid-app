@@ -1788,7 +1788,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             # Sentiment distribution as chips/badges
             st.markdown("**Sentiment Distribution:**")
             sentiment_chips_html = render.format_sentiment_mix_html(confidence_data['sentiment_distribution'])
-            st.markdown(sentiment_chips_html, unsafe_allow_html=True)
+            st.html(sentiment_chips_html)
         
         st.divider()
 
@@ -1849,37 +1849,39 @@ def apply_brand_styles():
             color: {brand_color} !important;
         }}
         
-        /* Override inline styles with red colors - BUT exclude sentiment chips */
-        [style*="rgb(255, 75, 75)"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]),
-        [style*="rgb(239, 68, 68)"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]),
-        [style*="#ff4b4b"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]),
-        [style*="#ef4444"]:not([style*="Negative"]):not([style*="background-color: #ef4444"]) {{
-            background-color: {brand_color} !important;
-            border-color: {brand_color} !important;
-            color: {brand_color} !important;
+        /* CRITICAL: Ensure sentiment chips keep their colors - highest priority */
+        .sentiment-chip {{
+            border: none !important;
         }}
-        
-        /* Ensure sentiment chips keep their colors - override brand color CSS */
-        span[style*="background-color: #22c55e"] {{
+        .sentiment-chip[style*="background-color: #22c55e"] {{
             background-color: #22c55e !important;
             color: white !important;
         }}
-        span[style*="background-color: #ef4444"] {{
+        .sentiment-chip[style*="background-color: #ef4444"] {{
             background-color: #ef4444 !important;
             color: white !important;
-            border: none !important;
         }}
-        span[style*="background-color: #6b7280"] {{
+        .sentiment-chip[style*="background-color: #6b7280"] {{
             background-color: #6b7280 !important;
             color: white !important;
         }}
-        span[style*="background-color: #f59e0b"] {{
+        .sentiment-chip[style*="background-color: #f59e0b"] {{
             background-color: #f59e0b !important;
             color: white !important;
         }}
-        span[style*="background-color: #9ca3af"] {{
+        .sentiment-chip[style*="background-color: #9ca3af"] {{
             background-color: #9ca3af !important;
             color: white !important;
+        }}
+        
+        /* Override inline styles with red colors - but EXCLUDE sentiment chips */
+        [style*="rgb(255, 75, 75)"]:not(.sentiment-chip),
+        [style*="rgb(239, 68, 68)"]:not(.sentiment-chip),
+        [style*="#ff4b4b"]:not(.sentiment-chip),
+        [style*="#ef4444"]:not(.sentiment-chip) {{
+            background-color: {brand_color} !important;
+            border-color: {brand_color} !important;
+            color: {brand_color} !important;
         }}
         
         [data-baseweb="tag"] {{
