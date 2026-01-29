@@ -1,6 +1,6 @@
 """Module for rendering data visualizations and UI components."""
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 
 
 # Truncation budgets
