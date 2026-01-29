@@ -1193,6 +1193,42 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         prioritize_diversity=True
                     )
                     
+                    # Show progress indicator
+                    st.caption(f"Showing {current_display_count} of {total_count} receipts")
+                    
+                    # Create a unique container ID for this topic (sanitized)
+                    container_id = topic_id.replace(' ', '_').replace(':', '_').replace('-', '_').replace('.', '_')
+                    
+                    # Add CSS for scrollable receipts container
+                    st.markdown(f"""
+                    <style>
+                    .receipts-scrollable-{container_id} {{
+                        max-height: {render.RECEIPT_CONTAINER_MAX_HEIGHT};
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        padding: 12px;
+                        margin: 8px 0;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 6px;
+                        background-color: #fafafa;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar {{
+                        width: 8px;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar-track {{
+                        background: #f1f1f1;
+                        border-radius: 4px;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb {{
+                        background: #cbd5e1;
+                        border-radius: 4px;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb:hover {{
+                        background: #94a3b8;
+                    }}
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
                     # Group by participant label for better organization
                     participant_groups = {}
                     for receipt in displayed_receipts:
@@ -1201,41 +1237,52 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                             participant_groups[participant_label] = []
                         participant_groups[participant_label].append(receipt)
                     
-                    # Display receipts grouped by participant
+                    # Build HTML for receipts in scrollable container
+                    receipts_html = f'<div class="receipts-scrollable-{container_id}">'
+                    
                     for participant_label, receipts in participant_groups.items():
-                        st.markdown(f"**{participant_label}**")
+                        # Escape HTML in participant label
+                        participant_escaped = participant_label.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                        receipts_html += f'<div style="margin-bottom: 16px;"><strong>{participant_escaped}</strong>'
                         
                         for receipt in receipts:
-                            with st.container():
-                                # Show quote excerpt
-                                if receipt['quote_excerpt'] and receipt['quote_excerpt'] != 'No quote text available':
-                                    st.write(f"*\"{receipt['quote_excerpt']}\"*")
-                                    
-                                    # Show full quote if truncated
-                                    if receipt['quote_full'] and len(receipt['quote_full']) > 120:
-                                        with st.expander(f"Show full quote"):
-                                            st.write(receipt['quote_full'])
-                                else:
-                                    st.caption("(Quote text not available)")
-                                
-                                # Show source context if available
-                                if receipt['source_context']:
-                                    st.caption(f"Source: {receipt['source_context']}")
-                                
-                                st.markdown("---")
+                            excerpt = receipt.get('quote_excerpt', '')
+                            if excerpt and excerpt != 'No quote text available':
+                                # Escape HTML in excerpt
+                                excerpt_escaped = excerpt.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+                                receipts_html += f'<div style="margin: 8px 0; padding: 8px; background-color: white; border-left: 3px solid #655CFE; border-radius: 4px;">'
+                                receipts_html += f'<em>"{excerpt_escaped}"</em>'
+                                if receipt.get('source_context'):
+                                    source_escaped = str(receipt['source_context']).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                                    receipts_html += f'<div style="font-size: 0.85em; color: #6b7280; margin-top: 4px;">Source: {source_escaped}</div>'
+                                receipts_html += '</div>'
+                            else:
+                                receipts_html += '<div style="margin: 8px 0; color: #6b7280; font-size: 0.9em;">(Quote text not available)</div>'
+                        
+                        receipts_html += '</div>'
+                    
+                    receipts_html += '</div>'
+                    st.markdown(receipts_html, unsafe_allow_html=True)
                     
                     # Show "Show more" button if there are more receipts
                     if total_count > current_display_count:
                         remaining = total_count - current_display_count
-                        if st.button(
-                            f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more receipts",
-                            key=f"show_more_receipts_{topic_id}"
-                        ):
-                            st.session_state[receipt_state_key] = min(
-                                current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
-                                total_count
-                            )
-                            st.rerun()
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.caption(f"{remaining} more receipt{'s' if remaining != 1 else ''} available")
+                        with col2:
+                            if st.button(
+                                f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more",
+                                key=f"show_more_receipts_{topic_id}",
+                                use_container_width=True
+                            ):
+                                st.session_state[receipt_state_key] = min(
+                                    current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
+                                    total_count
+                                )
+                                st.rerun()
+                    else:
+                        st.caption("All receipts displayed")
                 else:
                     st.info("No receipts available for this topic.")
             
@@ -4102,6 +4149,42 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         prioritize_diversity=True
                     )
                     
+                    # Show progress indicator
+                    st.caption(f"Showing {current_display_count} of {total_count} receipts")
+                    
+                    # Create a unique container ID for this topic (sanitized)
+                    container_id = topic_id.replace(' ', '_').replace(':', '_').replace('-', '_').replace('.', '_')
+                    
+                    # Add CSS for scrollable receipts container
+                    st.markdown(f"""
+                    <style>
+                    .receipts-scrollable-{container_id} {{
+                        max-height: {render.RECEIPT_CONTAINER_MAX_HEIGHT};
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        padding: 12px;
+                        margin: 8px 0;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 6px;
+                        background-color: #fafafa;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar {{
+                        width: 8px;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar-track {{
+                        background: #f1f1f1;
+                        border-radius: 4px;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb {{
+                        background: #cbd5e1;
+                        border-radius: 4px;
+                    }}
+                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb:hover {{
+                        background: #94a3b8;
+                    }}
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
                     # Group by participant label for better organization
                     participant_groups = {}
                     for receipt in displayed_receipts:
@@ -4110,41 +4193,52 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                             participant_groups[participant_label] = []
                         participant_groups[participant_label].append(receipt)
                     
-                    # Display receipts grouped by participant
+                    # Build HTML for receipts in scrollable container
+                    receipts_html = f'<div class="receipts-scrollable-{container_id}">'
+                    
                     for participant_label, receipts in participant_groups.items():
-                        st.markdown(f"**{participant_label}**")
+                        # Escape HTML in participant label
+                        participant_escaped = participant_label.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                        receipts_html += f'<div style="margin-bottom: 16px;"><strong>{participant_escaped}</strong>'
                         
                         for receipt in receipts:
-                            with st.container():
-                                # Show quote excerpt
-                                if receipt['quote_excerpt'] and receipt['quote_excerpt'] != 'No quote text available':
-                                    st.write(f"*\"{receipt['quote_excerpt']}\"*")
-                                    
-                                    # Show full quote if truncated
-                                    if receipt['quote_full'] and len(receipt['quote_full']) > 120:
-                                        with st.expander(f"Show full quote"):
-                                            st.write(receipt['quote_full'])
-                                else:
-                                    st.caption("(Quote text not available)")
-                                
-                                # Show source context if available
-                                if receipt['source_context']:
-                                    st.caption(f"Source: {receipt['source_context']}")
-                                
-                                st.markdown("---")
+                            excerpt = receipt.get('quote_excerpt', '')
+                            if excerpt and excerpt != 'No quote text available':
+                                # Escape HTML in excerpt
+                                excerpt_escaped = excerpt.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+                                receipts_html += f'<div style="margin: 8px 0; padding: 8px; background-color: white; border-left: 3px solid #655CFE; border-radius: 4px;">'
+                                receipts_html += f'<em>"{excerpt_escaped}"</em>'
+                                if receipt.get('source_context'):
+                                    source_escaped = str(receipt['source_context']).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                                    receipts_html += f'<div style="font-size: 0.85em; color: #6b7280; margin-top: 4px;">Source: {source_escaped}</div>'
+                                receipts_html += '</div>'
+                            else:
+                                receipts_html += '<div style="margin: 8px 0; color: #6b7280; font-size: 0.9em;">(Quote text not available)</div>'
+                        
+                        receipts_html += '</div>'
+                    
+                    receipts_html += '</div>'
+                    st.markdown(receipts_html, unsafe_allow_html=True)
                     
                     # Show "Show more" button if there are more receipts
                     if total_count > current_display_count:
                         remaining = total_count - current_display_count
-                        if st.button(
-                            f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more receipts",
-                            key=f"show_more_receipts_{topic_id}"
-                        ):
-                            st.session_state[receipt_state_key] = min(
-                                current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
-                                total_count
-                            )
-                            st.rerun()
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.caption(f"{remaining} more receipt{'s' if remaining != 1 else ''} available")
+                        with col2:
+                            if st.button(
+                                f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more",
+                                key=f"show_more_receipts_{topic_id}",
+                                use_container_width=True
+                            ):
+                                st.session_state[receipt_state_key] = min(
+                                    current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
+                                    total_count
+                                )
+                                st.rerun()
+                    else:
+                        st.caption("All receipts displayed")
                 else:
                     st.info("No receipts available for this topic.")
             
