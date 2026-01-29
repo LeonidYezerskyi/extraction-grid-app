@@ -957,6 +957,7 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     # Always show evidence count
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
+                    st.caption("Number of source excerpts supporting this insight")
                     
                     # Proof quote preview (truncated to 320 chars)
                     proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
@@ -987,12 +988,14 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     if is_fallback or not is_valid_quote:
                         # Show fallback message
                         with st.expander("💬 Proof Quote"):
+                            st.caption("A representative quote that illustrates this insight.")
                             st.info("No representative quote available")
                     elif proof_quote_preview_full:
                         proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
                         proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
                         
                         with st.expander("💬 Proof Quote"):
+                            st.caption("A representative quote that illustrates this insight.")
                             # Show truncated preview
                             st.write(proof_quote_preview_truncated)
                             # Show full text if truncated
@@ -1028,6 +1031,7 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     if receipt_links:
                         total_receipts = len(receipt_links)
                         with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
+                            st.caption("**Receipts** are source excerpts (quotes from participants) that support this insight.")
                             st.caption("Source excerpts supporting this insight (ranked by relevance):")
                             
                             # Convert receipt references to human-readable display objects
@@ -1208,7 +1212,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             with col2:
                 # Clarify what evidence_count means: total supporting excerpts
                 st.metric("Total Evidence", evidence_count)
-                st.caption("Supporting excerpts")
+                st.caption("Number of source excerpts supporting this topic")
             
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
@@ -1217,12 +1221,14 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             if is_fallback or not is_valid_quote:
                 # Show fallback message
                 with st.expander("💬 Proof Quote"):
+                    st.caption("A representative quote that illustrates this topic.")
                     st.info("No representative quote available")
             elif proof_quote_preview_full:
                 proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
                 proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
                 
                 with st.expander("💬 Proof Quote"):
+                    st.caption("A representative quote that illustrates this topic.")
                     # Show truncated preview
                     st.write(proof_quote_preview_truncated)
                     # Show full text if truncated
@@ -3900,6 +3906,7 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     # Always show evidence count
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
+                    st.caption("Number of source excerpts supporting this insight")
                     
                     # Proof quote preview (truncated to 320 chars)
                     proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
@@ -3930,12 +3937,14 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     if is_fallback or not is_valid_quote:
                         # Show fallback message
                         with st.expander("💬 Proof Quote"):
+                            st.caption("A representative quote that illustrates this insight.")
                             st.info("No representative quote available")
                     elif proof_quote_preview_full:
                         proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
                         proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
                         
                         with st.expander("💬 Proof Quote"):
+                            st.caption("A representative quote that illustrates this insight.")
                             # Show truncated preview
                             st.write(proof_quote_preview_truncated)
                             # Show full text if truncated
@@ -3971,6 +3980,7 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     if receipt_links:
                         total_receipts = len(receipt_links)
                         with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
+                            st.caption("**Receipts** are source excerpts (quotes from participants) that support this insight.")
                             st.caption("Source excerpts supporting this insight (ranked by relevance):")
                             
                             # Convert receipt references to human-readable display objects
@@ -4151,7 +4161,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             with col2:
                 # Clarify what evidence_count means: total supporting excerpts
                 st.metric("Total Evidence", evidence_count)
-                st.caption("Supporting excerpts")
+                st.caption("Number of source excerpts supporting this topic")
             
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
@@ -4160,12 +4170,14 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             if is_fallback or not is_valid_quote:
                 # Show fallback message
                 with st.expander("💬 Proof Quote"):
+                    st.caption("A representative quote that illustrates this topic.")
                     st.info("No representative quote available")
             elif proof_quote_preview_full:
                 proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
                 proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
                 
                 with st.expander("💬 Proof Quote"):
+                    st.caption("A representative quote that illustrates this topic.")
                     # Show truncated preview
                     st.write(proof_quote_preview_truncated)
                     # Show full text if truncated
