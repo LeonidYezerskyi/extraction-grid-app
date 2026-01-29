@@ -1102,7 +1102,22 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                             
                             # Pagination controls (horizontal layout for Key Takeaways)
                             if total_pages > 1:
-                                col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                                # Add CSS to prevent text wrapping in pagination buttons
+                                st.markdown("""
+                                <style>
+                                button[data-testid*="receipts_prev_takeaway"],
+                                button[data-testid*="receipts_next_takeaway"] {
+                                    white-space: nowrap !important;
+                                    min-width: 110px !important;
+                                }
+                                button[data-testid*="receipts_prev_takeaway"] > div,
+                                button[data-testid*="receipts_next_takeaway"] > div {
+                                    white-space: nowrap !important;
+                                }
+                                </style>
+                                """, unsafe_allow_html=True)
+                                
+                                col1, col2, col3, col4 = st.columns([1.3, 1.3, 2, 1])
                                 
                                 with col1:
                                     # Previous button
@@ -2204,6 +2219,14 @@ def apply_brand_styles():
         
         .stSidebar [data-testid="stHorizontalBlock"] {{
             gap: 0.3rem;
+        }}
+        
+        /* Prevent text wrapping in pagination buttons */
+        .stButton > button {{
+            white-space: nowrap !important;
+        }}
+        .stButton > button > div {{
+            white-space: nowrap !important;
         }}
         
         /* Ultra compact buttons */
@@ -4134,7 +4157,22 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                             
                             # Pagination controls (horizontal layout for Key Takeaways)
                             if total_pages > 1:
-                                col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                                # Add CSS to prevent text wrapping in pagination buttons
+                                st.markdown("""
+                                <style>
+                                button[data-testid*="receipts_prev_takeaway"],
+                                button[data-testid*="receipts_next_takeaway"] {
+                                    white-space: nowrap !important;
+                                    min-width: 110px !important;
+                                }
+                                button[data-testid*="receipts_prev_takeaway"] > div,
+                                button[data-testid*="receipts_next_takeaway"] > div {
+                                    white-space: nowrap !important;
+                                }
+                                </style>
+                                """, unsafe_allow_html=True)
+                                
+                                col1, col2, col3, col4 = st.columns([1.3, 1.3, 2, 1])
                                 
                                 with col1:
                                     # Previous button
@@ -5236,6 +5274,14 @@ def apply_brand_styles():
         
         .stSidebar [data-testid="stHorizontalBlock"] {{
             gap: 0.3rem;
+        }}
+        
+        /* Prevent text wrapping in pagination buttons */
+        .stButton > button {{
+            white-space: nowrap !important;
+        }}
+        .stButton > button > div {{
+            white-space: nowrap !important;
         }}
         
         /* Ultra compact buttons */
