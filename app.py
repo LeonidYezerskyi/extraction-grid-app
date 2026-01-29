@@ -1338,27 +1338,22 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                     
                     # Pagination controls
                     if total_pages > 1:
-                        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                        col1, col2 = st.columns([1, 3])
                         
                         with col1:
-                            # Previous button
+                            # Previous button (on top)
                             if st.button("◀ Previous", key=f"receipts_prev_{topic_id}", disabled=(current_page == 0), use_container_width=True):
                                 st.session_state[receipt_page_key] = max(0, current_page - 1)
                                 st.rerun()
-                        
-                        with col2:
-                            # Next button
+                            
+                            # Next button (below previous)
                             if st.button("Next ▶", key=f"receipts_next_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
                                 st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
                                 st.rerun()
                         
-                        with col3:
+                        with col2:
                             # Page number display (centered)
                             st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
-                        
-                        with col4:
-                            # Empty column for spacing
-                            pass
                 else:
                     st.info("No receipts available for this topic.")
             
@@ -4370,27 +4365,22 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                     
                     # Pagination controls
                     if total_pages > 1:
-                        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                        col1, col2 = st.columns([1, 3])
                         
                         with col1:
-                            # Previous button
+                            # Previous button (on top)
                             if st.button("◀ Previous", key=f"receipts_prev_{topic_id}", disabled=(current_page == 0), use_container_width=True):
                                 st.session_state[receipt_page_key] = max(0, current_page - 1)
                                 st.rerun()
-                        
-                        with col2:
-                            # Next button
+                            
+                            # Next button (below previous)
                             if st.button("Next ▶", key=f"receipts_next_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
                                 st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
                                 st.rerun()
                         
-                        with col3:
+                        with col2:
                             # Page number display (centered)
                             st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
-                        
-                        with col4:
-                            # Empty column for spacing
-                            pass
                 else:
                     st.info("No receipts available for this topic.")
             
