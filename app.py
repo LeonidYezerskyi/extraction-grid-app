@@ -1231,146 +1231,39 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         st.markdown("**Full quote:**")
                         st.write(proof_quote_preview_full)
             
-            # Always show receipts expander (even if empty)
-            total_receipts = len(receipt_links) if receipt_links else 0
-            with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
-                if receipt_links:
-                    st.caption("Source excerpts supporting this insight (ranked by relevance):")
-                    
-                    # Convert receipt references to human-readable display objects
-                    receipt_displays = []
-                    for receipt_ref in receipt_links:
-                        receipt_display = render.build_receipt_display(
-                            receipt_ref, canonical_model, topic_id=topic_id
-                        )
-                        receipt_displays.append(receipt_display)
-                    
-                    # Create session state key for this topic's receipt page
-                    receipt_page_key = f'receipts_page_{topic_id}'
-                    if receipt_page_key not in st.session_state:
-                        st.session_state[receipt_page_key] = 0  # Start at page 0
-                    
-                    current_page = st.session_state[receipt_page_key]
-                    page_size = render.RECEIPT_PAGE_SIZE
-                    
-                    # Rank all receipts first (for consistent ordering)
-                    all_ranked_receipts, total_count = render.rank_and_limit_receipts(
-                        receipt_displays,
-                        max_display=len(receipt_displays),  # Rank all, don't limit yet
-                        prioritize_diversity=True
-                    )
-                    
-                    # Calculate pagination
-                    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-                    start_idx = current_page * page_size
-                    end_idx = min(start_idx + page_size, total_count)
-                    
-                    # Get receipts for current page
-                    displayed_receipts = all_ranked_receipts[start_idx:end_idx]
-                    
-                    # Show progress indicator
-                    st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
-                    
-                    # Create a unique container ID for this topic (sanitized)
-                    container_id = topic_id.replace(' ', '_').replace(':', '_').replace('-', '_').replace('.', '_')
-                    
-                    # Add CSS for scrollable receipts container
-                    st.markdown(f"""
-                    <style>
-                    .receipts-scrollable-{container_id} {{
-                        max-height: {render.RECEIPT_CONTAINER_MAX_HEIGHT};
-                        overflow-y: auto;
-                        overflow-x: hidden;
-                        padding: 12px;
-                        margin: 8px 0;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 6px;
-                        background-color: #fafafa;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar {{
-                        width: 8px;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar-track {{
-                        background: #f1f1f1;
-                        border-radius: 4px;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb {{
-                        background: #cbd5e1;
-                        border-radius: 4px;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb:hover {{
-                        background: #94a3b8;
-                    }}
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    # Group by participant label for better organization
-                    participant_groups = {}
-                    for receipt in displayed_receipts:
-                        participant_label = receipt['participant_label']
-                        if participant_label not in participant_groups:
-                            participant_groups[participant_label] = []
-                        participant_groups[participant_label].append(receipt)
-                    
-                    # Create scrollable container wrapper with HTML
-                    st.markdown(f'<div class="receipts-scrollable-{container_id}">', unsafe_allow_html=True)
-                    
-                    # Display receipts using Streamlit components (so expanders work)
-                    for participant_label, receipts in participant_groups.items():
-                        st.markdown(f"**{participant_label}**")
-                        
-                        for receipt in receipts:
-                            with st.container():
-                                # Show quote excerpt
-                                excerpt = receipt.get('quote_excerpt', '')
-                                quote_full = receipt.get('quote_full', '')
-                                
-                                if excerpt and excerpt != 'No quote text available':
-                                    # Show truncated excerpt
-                                    st.write(f"*\"{excerpt}\"*")
-                                    
-                                    # Show expander for full quote if it's truncated or longer
-                                    # Check if excerpt ends with "..." (truncated) or if full quote is significantly longer
-                                    is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
-                                    if quote_full and is_truncated:
-                                        with st.expander("📖 Show full quote"):
-                                            st.write(quote_full)
-                                else:
-                                    st.caption("(Quote text not available)")
-                                
-                                # Show source context if available
-                                if receipt.get('source_context'):
-                                    st.caption(f"Source: {receipt['source_context']}")
-                                
-                                st.markdown("---")
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Pagination controls (horizontal layout for Topic Cards)
-                    if total_pages > 1:
-                        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
-                        
-                        with col1:
-                            # Previous button
-                            if st.button("◀ Previous", key=f"receipts_prev_{topic_id}", disabled=(current_page == 0), use_container_width=True):
-                                st.session_state[receipt_page_key] = max(0, current_page - 1)
-                                st.rerun()
-                        
-                        with col2:
-                            # Next button
-                            if st.button("Next ▶", key=f"receipts_next_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
-                                st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
-                                st.rerun()
-                        
-                        with col3:
-                            # Page number display (centered)
-                            st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
-                        
-                        with col4:
-                            # Empty column for spacing
-                            pass
+            # Evidence summary (lightweight reference, not full list)
+            # Key Takeaways shows full receipts; Topic Cards show summary to avoid duplication
+            if receipt_links:
+                evidence_summary = render.build_evidence_summary(
+                    receipt_links, canonical_model, topic_id=topic_id, max_preview=3
+                )
+                
+                st.markdown("---")
+                st.caption("**Evidence Summary**")
+                
+                # Show total count and participant count
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Total Evidence", evidence_summary['total_count'])
+                with col2:
+                    st.metric("Participants", evidence_summary['participant_count'])
+                
+                # Show preview of top evidence
+                if evidence_summary['preview_receipts']:
+                    st.caption("**Top evidence excerpts:**")
+                    for receipt in evidence_summary['preview_receipts']:
+                        participant_label = receipt.get('participant_label', 'Unknown')
+                        excerpt = receipt.get('quote_excerpt', '')
+                        if excerpt and excerpt != 'No quote text available':
+                            st.caption(f"• **{participant_label}**: \"{excerpt}\"")
+                
+                # Show reference to Key Takeaways for full evidence
+                if evidence_summary['has_more']:
+                    st.info(f"📋 View all {evidence_summary['total_count']} supporting excerpts in **Key Takeaways** section above.")
                 else:
-                    st.info("No receipts available for this topic.")
+                    st.caption("All evidence shown above. See **Key Takeaways** for full context.")
+            else:
+                st.caption("No evidence available for this topic.")
             
             st.divider()
 
@@ -4281,146 +4174,39 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         st.markdown("**Full quote:**")
                         st.write(proof_quote_preview_full)
             
-            # Always show receipts expander (even if empty)
-            total_receipts = len(receipt_links) if receipt_links else 0
-            with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
-                if receipt_links:
-                    st.caption("Source excerpts supporting this insight (ranked by relevance):")
-                    
-                    # Convert receipt references to human-readable display objects
-                    receipt_displays = []
-                    for receipt_ref in receipt_links:
-                        receipt_display = render.build_receipt_display(
-                            receipt_ref, canonical_model, topic_id=topic_id
-                        )
-                        receipt_displays.append(receipt_display)
-                    
-                    # Create session state key for this topic's receipt page
-                    receipt_page_key = f'receipts_page_{topic_id}'
-                    if receipt_page_key not in st.session_state:
-                        st.session_state[receipt_page_key] = 0  # Start at page 0
-                    
-                    current_page = st.session_state[receipt_page_key]
-                    page_size = render.RECEIPT_PAGE_SIZE
-                    
-                    # Rank all receipts first (for consistent ordering)
-                    all_ranked_receipts, total_count = render.rank_and_limit_receipts(
-                        receipt_displays,
-                        max_display=len(receipt_displays),  # Rank all, don't limit yet
-                        prioritize_diversity=True
-                    )
-                    
-                    # Calculate pagination
-                    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-                    start_idx = current_page * page_size
-                    end_idx = min(start_idx + page_size, total_count)
-                    
-                    # Get receipts for current page
-                    displayed_receipts = all_ranked_receipts[start_idx:end_idx]
-                    
-                    # Show progress indicator
-                    st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
-                    
-                    # Create a unique container ID for this topic (sanitized)
-                    container_id = topic_id.replace(' ', '_').replace(':', '_').replace('-', '_').replace('.', '_')
-                    
-                    # Add CSS for scrollable receipts container
-                    st.markdown(f"""
-                    <style>
-                    .receipts-scrollable-{container_id} {{
-                        max-height: {render.RECEIPT_CONTAINER_MAX_HEIGHT};
-                        overflow-y: auto;
-                        overflow-x: hidden;
-                        padding: 12px;
-                        margin: 8px 0;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 6px;
-                        background-color: #fafafa;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar {{
-                        width: 8px;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar-track {{
-                        background: #f1f1f1;
-                        border-radius: 4px;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb {{
-                        background: #cbd5e1;
-                        border-radius: 4px;
-                    }}
-                    .receipts-scrollable-{container_id}::-webkit-scrollbar-thumb:hover {{
-                        background: #94a3b8;
-                    }}
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    # Group by participant label for better organization
-                    participant_groups = {}
-                    for receipt in displayed_receipts:
-                        participant_label = receipt['participant_label']
-                        if participant_label not in participant_groups:
-                            participant_groups[participant_label] = []
-                        participant_groups[participant_label].append(receipt)
-                    
-                    # Create scrollable container wrapper with HTML
-                    st.markdown(f'<div class="receipts-scrollable-{container_id}">', unsafe_allow_html=True)
-                    
-                    # Display receipts using Streamlit components (so expanders work)
-                    for participant_label, receipts in participant_groups.items():
-                        st.markdown(f"**{participant_label}**")
-                        
-                        for receipt in receipts:
-                            with st.container():
-                                # Show quote excerpt
-                                excerpt = receipt.get('quote_excerpt', '')
-                                quote_full = receipt.get('quote_full', '')
-                                
-                                if excerpt and excerpt != 'No quote text available':
-                                    # Show truncated excerpt
-                                    st.write(f"*\"{excerpt}\"*")
-                                    
-                                    # Show expander for full quote if it's truncated or longer
-                                    # Check if excerpt ends with "..." (truncated) or if full quote is significantly longer
-                                    is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
-                                    if quote_full and is_truncated:
-                                        with st.expander("📖 Show full quote"):
-                                            st.write(quote_full)
-                                else:
-                                    st.caption("(Quote text not available)")
-                                
-                                # Show source context if available
-                                if receipt.get('source_context'):
-                                    st.caption(f"Source: {receipt['source_context']}")
-                                
-                                st.markdown("---")
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Pagination controls (horizontal layout for Topic Cards)
-                    if total_pages > 1:
-                        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
-                        
-                        with col1:
-                            # Previous button
-                            if st.button("◀ Previous", key=f"receipts_prev_{topic_id}", disabled=(current_page == 0), use_container_width=True):
-                                st.session_state[receipt_page_key] = max(0, current_page - 1)
-                                st.rerun()
-                        
-                        with col2:
-                            # Next button
-                            if st.button("Next ▶", key=f"receipts_next_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
-                                st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
-                                st.rerun()
-                        
-                        with col3:
-                            # Page number display (centered)
-                            st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
-                        
-                        with col4:
-                            # Empty column for spacing
-                            pass
+            # Evidence summary (lightweight reference, not full list)
+            # Key Takeaways shows full receipts; Topic Cards show summary to avoid duplication
+            if receipt_links:
+                evidence_summary = render.build_evidence_summary(
+                    receipt_links, canonical_model, topic_id=topic_id, max_preview=3
+                )
+                
+                st.markdown("---")
+                st.caption("**Evidence Summary**")
+                
+                # Show total count and participant count
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Total Evidence", evidence_summary['total_count'])
+                with col2:
+                    st.metric("Participants", evidence_summary['participant_count'])
+                
+                # Show preview of top evidence
+                if evidence_summary['preview_receipts']:
+                    st.caption("**Top evidence excerpts:**")
+                    for receipt in evidence_summary['preview_receipts']:
+                        participant_label = receipt.get('participant_label', 'Unknown')
+                        excerpt = receipt.get('quote_excerpt', '')
+                        if excerpt and excerpt != 'No quote text available':
+                            st.caption(f"• **{participant_label}**: \"{excerpt}\"")
+                
+                # Show reference to Key Takeaways for full evidence
+                if evidence_summary['has_more']:
+                    st.info(f"📋 View all {evidence_summary['total_count']} supporting excerpts in **Key Takeaways** section above.")
                 else:
-                    st.info("No receipts available for this topic.")
+                    st.caption("All evidence shown above. See **Key Takeaways** for full context.")
+            else:
+                st.caption("No evidence available for this topic.")
             
             st.divider()
 

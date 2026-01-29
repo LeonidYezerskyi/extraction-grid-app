@@ -451,6 +451,80 @@ def rank_and_limit_receipts(
     return selected, total_count
 
 
+def build_evidence_summary(
+    receipt_links: List[str],
+    canonical_model,
+    topic_id: Optional[str] = None,
+    max_preview: int = 3
+) -> Dict[str, Any]:
+    """
+    Build a summary of evidence for a topic without showing full receipt lists.
+    This provides a lightweight reference to evidence that can be used in Topic Cards
+    to avoid duplicating full receipt lists.
+    
+    Args:
+        receipt_links: List of receipt references (participant_id:quote_index)
+        canonical_model: CanonicalModel object with evidence_cells and participants
+        topic_id: Optional topic_id for context
+        max_preview: Maximum number of receipts to show in preview (default 3)
+    
+    Returns:
+        Dictionary with:
+        - total_count: Total number of supporting excerpts
+        - participant_count: Number of unique participants
+        - top_participants: List of participant labels (up to max_preview)
+        - preview_receipts: List of preview receipt displays (up to max_preview)
+        - has_more: Boolean indicating if there are more receipts beyond preview
+    """
+    if not receipt_links:
+        return {
+            'total_count': 0,
+            'participant_count': 0,
+            'top_participants': [],
+            'preview_receipts': [],
+            'has_more': False
+        }
+    
+    total_count = len(receipt_links)
+    
+    # Build receipt displays for preview
+    receipt_displays = []
+    for receipt_ref in receipt_links[:max_preview * 2]:  # Get more for diversity
+        receipt_display = build_receipt_display(
+            receipt_ref, canonical_model, topic_id=topic_id
+        )
+        receipt_displays.append(receipt_display)
+    
+    # Rank and get top preview receipts
+    ranked_receipts, _ = rank_and_limit_receipts(
+        receipt_displays,
+        max_display=max_preview,
+        prioritize_diversity=True
+    )
+    
+    # Count unique participants
+    participant_ids = set()
+    for receipt_ref in receipt_links:
+        if ':' in receipt_ref:
+            participant_id = receipt_ref.split(':', 1)[0]
+            participant_ids.add(participant_id)
+    
+    # Get participant labels for top participants
+    top_participants = []
+    for receipt in ranked_receipts:
+        participant_label = receipt.get('participant_label', 'Unknown')
+        if participant_label not in top_participants:
+            top_participants.append(participant_label)
+    
+    return {
+        'total_count': total_count,
+        'participant_count': len(participant_ids),
+        'top_participants': top_participants[:max_preview],
+        'preview_receipts': ranked_receipts[:max_preview],
+        'has_more': total_count > max_preview
+    }
+
+
 # Unit tests
 if __name__ == '__main__':
     import unittest
