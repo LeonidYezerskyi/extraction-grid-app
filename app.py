@@ -1140,7 +1140,9 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             with col1:
                 st.markdown(render.format_coverage_bar_html(coverage_rate), unsafe_allow_html=True)
             with col2:
-                st.metric("Evidence Count", evidence_count)
+                # Clarify what evidence_count means: total supporting excerpts
+                st.metric("Total Evidence", evidence_count)
+                st.caption("Supporting excerpts")
             
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
@@ -1164,9 +1166,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         st.write(proof_quote_preview_full)
             
             # Always show receipts expander (even if empty)
-            with st.expander(f"📋 Show Receipts ({len(receipt_links) if receipt_links else 0})"):
+            total_receipts = len(receipt_links) if receipt_links else 0
+            with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
                 if receipt_links:
-                    st.caption("Source excerpts supporting this insight:")
+                    st.caption("Source excerpts supporting this insight (ranked by relevance):")
                     
                     # Convert receipt references to human-readable display objects
                     receipt_displays = []
@@ -1176,9 +1179,23 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         )
                         receipt_displays.append(receipt_display)
                     
+                    # Create session state key for this topic's receipt display count
+                    receipt_state_key = f'receipts_displayed_{topic_id}'
+                    if receipt_state_key not in st.session_state:
+                        st.session_state[receipt_state_key] = render.RECEIPT_DISPLAY_DEFAULT
+                    
+                    current_display_count = st.session_state[receipt_state_key]
+                    
+                    # Rank and limit receipts for display
+                    displayed_receipts, total_count = render.rank_and_limit_receipts(
+                        receipt_displays,
+                        max_display=current_display_count,
+                        prioritize_diversity=True
+                    )
+                    
                     # Group by participant label for better organization
                     participant_groups = {}
-                    for receipt in receipt_displays:
+                    for receipt in displayed_receipts:
                         participant_label = receipt['participant_label']
                         if participant_label not in participant_groups:
                             participant_groups[participant_label] = []
@@ -1206,6 +1223,19 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                                     st.caption(f"Source: {receipt['source_context']}")
                                 
                                 st.markdown("---")
+                    
+                    # Show "Show more" button if there are more receipts
+                    if total_count > current_display_count:
+                        remaining = total_count - current_display_count
+                        if st.button(
+                            f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more receipts",
+                            key=f"show_more_receipts_{topic_id}"
+                        ):
+                            st.session_state[receipt_state_key] = min(
+                                current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
+                                total_count
+                            )
+                            st.rerun()
                 else:
                     st.info("No receipts available for this topic.")
             
@@ -4019,7 +4049,9 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             with col1:
                 st.markdown(render.format_coverage_bar_html(coverage_rate), unsafe_allow_html=True)
             with col2:
-                st.metric("Evidence Count", evidence_count)
+                # Clarify what evidence_count means: total supporting excerpts
+                st.metric("Total Evidence", evidence_count)
+                st.caption("Supporting excerpts")
             
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
@@ -4043,9 +4075,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         st.write(proof_quote_preview_full)
             
             # Always show receipts expander (even if empty)
-            with st.expander(f"📋 Show Receipts ({len(receipt_links) if receipt_links else 0})"):
+            total_receipts = len(receipt_links) if receipt_links else 0
+            with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
                 if receipt_links:
-                    st.caption("Source excerpts supporting this insight:")
+                    st.caption("Source excerpts supporting this insight (ranked by relevance):")
                     
                     # Convert receipt references to human-readable display objects
                     receipt_displays = []
@@ -4055,9 +4088,23 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         )
                         receipt_displays.append(receipt_display)
                     
+                    # Create session state key for this topic's receipt display count
+                    receipt_state_key = f'receipts_displayed_{topic_id}'
+                    if receipt_state_key not in st.session_state:
+                        st.session_state[receipt_state_key] = render.RECEIPT_DISPLAY_DEFAULT
+                    
+                    current_display_count = st.session_state[receipt_state_key]
+                    
+                    # Rank and limit receipts for display
+                    displayed_receipts, total_count = render.rank_and_limit_receipts(
+                        receipt_displays,
+                        max_display=current_display_count,
+                        prioritize_diversity=True
+                    )
+                    
                     # Group by participant label for better organization
                     participant_groups = {}
-                    for receipt in receipt_displays:
+                    for receipt in displayed_receipts:
                         participant_label = receipt['participant_label']
                         if participant_label not in participant_groups:
                             participant_groups[participant_label] = []
@@ -4085,6 +4132,19 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                                     st.caption(f"Source: {receipt['source_context']}")
                                 
                                 st.markdown("---")
+                    
+                    # Show "Show more" button if there are more receipts
+                    if total_count > current_display_count:
+                        remaining = total_count - current_display_count
+                        if st.button(
+                            f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more receipts",
+                            key=f"show_more_receipts_{topic_id}"
+                        ):
+                            st.session_state[receipt_state_key] = min(
+                                current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
+                                total_count
+                            )
+                            st.rerun()
                 else:
                     st.info("No receipts available for this topic.")
             

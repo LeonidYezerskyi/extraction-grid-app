@@ -8,6 +8,10 @@ TAKEAWAY_MAX = 180
 TOPIC_ONELINER_MAX = 240
 QUOTE_PREVIEW_MAX = 320
 
+# Receipt display limits
+RECEIPT_DISPLAY_DEFAULT = 10  # Default number of receipts to show
+RECEIPT_DISPLAY_INCREMENT = 10  # Number of additional receipts per "Show more" click
+
 
 def truncate(text: Optional[str], max_chars: int) -> str:
     """
@@ -359,6 +363,21 @@ def build_receipt_display(
         if 'source' in meta or 'context' in meta or 'type' in meta:
             source_context = meta.get('source') or meta.get('context') or meta.get('type')
     
+    # Calculate relevance score for ranking
+    # Factors: quote length (prefer medium-length quotes), has text, participant diversity
+    relevance_score = 0.0
+    if quote_text:
+        quote_len = len(quote_text)
+        # Prefer quotes between 50-300 characters (readable, substantial)
+        if 50 <= quote_len <= 300:
+            relevance_score += 10.0
+        elif 20 <= quote_len < 50:
+            relevance_score += 5.0
+        elif quote_len > 300:
+            relevance_score += 3.0
+        else:
+            relevance_score += 1.0
+    
     return {
         'participant_id': participant_id,
         'participant_label': participant_label,
@@ -366,8 +385,69 @@ def build_receipt_display(
         'quote_full': quote_text,
         'quote_index': quote_index,
         'source_context': source_context,
-        'receipt_ref': receipt_ref  # Keep original for internal reference
+        'receipt_ref': receipt_ref,  # Keep original for internal reference
+        'relevance_score': relevance_score  # For ranking
     }
+
+
+def rank_and_limit_receipts(
+    receipt_displays: List[Dict[str, Any]],
+    max_display: int = RECEIPT_DISPLAY_DEFAULT,
+    prioritize_diversity: bool = True
+) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    Rank receipts by relevance and limit display, ensuring participant diversity.
+    
+    Args:
+        receipt_displays: List of receipt display dictionaries
+        max_display: Maximum number of receipts to return (default RECEIPT_DISPLAY_DEFAULT)
+        prioritize_diversity: If True, ensure at least one receipt per participant when possible
+    
+    Returns:
+        Tuple of (ranked_receipts, total_count)
+        - ranked_receipts: Top N receipts, ranked by relevance and diversity
+        - total_count: Total number of receipts available
+    """
+    if not receipt_displays:
+        return [], 0
+    
+    total_count = len(receipt_displays)
+    
+    if total_count <= max_display:
+        # No need to limit, just sort by relevance
+        sorted_receipts = sorted(receipt_displays, key=lambda r: r.get('relevance_score', 0), reverse=True)
+        return sorted_receipts, total_count
+    
+    # Sort by relevance score (descending)
+    sorted_by_relevance = sorted(receipt_displays, key=lambda r: r.get('relevance_score', 0), reverse=True)
+    
+    if not prioritize_diversity:
+        # Simple case: just return top N by relevance
+        return sorted_by_relevance[:max_display], total_count
+    
+    # Diversity-aware selection: ensure we get receipts from different participants
+    selected = []
+    participant_used = set()
+    
+    # First pass: select one best receipt per participant (up to max_display)
+    for receipt in sorted_by_relevance:
+        if len(selected) >= max_display:
+            break
+        participant_id = receipt.get('participant_id', '')
+        if participant_id not in participant_used:
+            selected.append(receipt)
+            participant_used.add(participant_id)
+    
+    # Second pass: fill remaining slots with highest relevance receipts
+    remaining_slots = max_display - len(selected)
+    if remaining_slots > 0:
+        for receipt in sorted_by_relevance:
+            if len(selected) >= max_display:
+                break
+            if receipt not in selected:
+                selected.append(receipt)
+    
+    return selected, total_count
 
 
 # Unit tests
