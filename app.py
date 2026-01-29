@@ -1026,8 +1026,9 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     # Always show receipts expander
                     receipt_links = topic_card.get('receipt_links', [])
                     if receipt_links:
-                        with st.expander(f"📋 Show Receipts ({len(receipt_links)})"):
-                            st.caption("Source excerpts supporting this insight:")
+                        total_receipts = len(receipt_links)
+                        with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
+                            st.caption("Source excerpts supporting this insight (ranked by relevance):")
                             
                             # Convert receipt references to human-readable display objects
                             receipt_displays = []
@@ -1037,9 +1038,35 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                                 )
                                 receipt_displays.append(receipt_display)
                             
+                            # Create session state key for this topic's receipt page
+                            receipt_page_key = f'receipts_page_takeaway_{source_topic_id}'
+                            if receipt_page_key not in st.session_state:
+                                st.session_state[receipt_page_key] = 0  # Start at page 0
+                            
+                            current_page = st.session_state[receipt_page_key]
+                            page_size = render.RECEIPT_PAGE_SIZE
+                            
+                            # Rank all receipts first (for consistent ordering)
+                            all_ranked_receipts, total_count = render.rank_and_limit_receipts(
+                                receipt_displays,
+                                max_display=len(receipt_displays),  # Rank all, don't limit yet
+                                prioritize_diversity=True
+                            )
+                            
+                            # Calculate pagination
+                            total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+                            start_idx = current_page * page_size
+                            end_idx = min(start_idx + page_size, total_count)
+                            
+                            # Get receipts for current page
+                            displayed_receipts = all_ranked_receipts[start_idx:end_idx]
+                            
+                            # Show progress indicator
+                            st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
+                            
                             # Group by participant label
                             participant_groups = {}
-                            for receipt in receipt_displays:
+                            for receipt in displayed_receipts:
                                 participant_label = receipt['participant_label']
                                 if participant_label not in participant_groups:
                                     participant_groups[participant_label] = []
@@ -1052,21 +1079,50 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                                 for receipt in receipts:
                                     with st.container():
                                         # Show quote excerpt
-                                        if receipt['quote_excerpt'] and receipt['quote_excerpt'] != 'No quote text available':
-                                            st.write(f"*\"{receipt['quote_excerpt']}\"*")
+                                        excerpt = receipt.get('quote_excerpt', '')
+                                        quote_full = receipt.get('quote_full', '')
+                                        
+                                        if excerpt and excerpt != 'No quote text available':
+                                            # Show truncated excerpt
+                                            st.write(f"*\"{excerpt}\"*")
                                             
-                                            # Show full quote if truncated
-                                            if receipt['quote_full'] and len(receipt['quote_full']) > 120:
-                                                with st.expander(f"Show full quote"):
-                                                    st.write(receipt['quote_full'])
+                                            # Show expander for full quote if it's truncated or longer
+                                            is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
+                                            if quote_full and is_truncated:
+                                                with st.expander("📖 Show full quote"):
+                                                    st.write(quote_full)
                                         else:
                                             st.caption("(Quote text not available)")
                                         
                                         # Show source context if available
-                                        if receipt['source_context']:
+                                        if receipt.get('source_context'):
                                             st.caption(f"Source: {receipt['source_context']}")
                                         
                                         st.markdown("---")
+                            
+                            # Pagination controls
+                            if total_pages > 1:
+                                col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                                
+                                with col1:
+                                    # Previous button
+                                    if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
+                                        st.session_state[receipt_page_key] = max(0, current_page - 1)
+                                        st.rerun()
+                                
+                                with col2:
+                                    # Next button
+                                    if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                                        st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
+                                        st.rerun()
+                                
+                                with col3:
+                                    # Page number display (centered)
+                                    st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                                
+                                with col4:
+                                    # Empty column for spacing
+                                    pass
                     else:
                         st.caption("No receipts available")
             
@@ -1179,22 +1235,31 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         )
                         receipt_displays.append(receipt_display)
                     
-                    # Create session state key for this topic's receipt display count
-                    receipt_state_key = f'receipts_displayed_{topic_id}'
-                    if receipt_state_key not in st.session_state:
-                        st.session_state[receipt_state_key] = render.RECEIPT_DISPLAY_DEFAULT
+                    # Create session state key for this topic's receipt page
+                    receipt_page_key = f'receipts_page_{topic_id}'
+                    if receipt_page_key not in st.session_state:
+                        st.session_state[receipt_page_key] = 0  # Start at page 0
                     
-                    current_display_count = st.session_state[receipt_state_key]
+                    current_page = st.session_state[receipt_page_key]
+                    page_size = render.RECEIPT_PAGE_SIZE
                     
-                    # Rank and limit receipts for display
-                    displayed_receipts, total_count = render.rank_and_limit_receipts(
+                    # Rank all receipts first (for consistent ordering)
+                    all_ranked_receipts, total_count = render.rank_and_limit_receipts(
                         receipt_displays,
-                        max_display=current_display_count,
+                        max_display=len(receipt_displays),  # Rank all, don't limit yet
                         prioritize_diversity=True
                     )
                     
+                    # Calculate pagination
+                    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+                    start_idx = current_page * page_size
+                    end_idx = min(start_idx + page_size, total_count)
+                    
+                    # Get receipts for current page
+                    displayed_receipts = all_ranked_receipts[start_idx:end_idx]
+                    
                     # Show progress indicator
-                    st.caption(f"Showing {current_display_count} of {total_count} receipts")
+                    st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
                     
                     # Create a unique container ID for this topic (sanitized)
                     container_id = topic_id.replace(' ', '_').replace(':', '_').replace('-', '_').replace('.', '_')
@@ -1271,25 +1336,29 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # Show "Show more" button if there are more receipts
-                    if total_count > current_display_count:
-                        remaining = total_count - current_display_count
-                        col1, col2 = st.columns([3, 1])
+                    # Pagination controls
+                    if total_pages > 1:
+                        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                        
                         with col1:
-                            st.caption(f"{remaining} more receipt{'s' if remaining != 1 else ''} available")
-                        with col2:
-                            if st.button(
-                                f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more",
-                                key=f"show_more_receipts_{topic_id}",
-                                use_container_width=True
-                            ):
-                                st.session_state[receipt_state_key] = min(
-                                    current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
-                                    total_count
-                                )
+                            # Previous button
+                            if st.button("◀ Previous", key=f"receipts_prev_{topic_id}", disabled=(current_page == 0), use_container_width=True):
+                                st.session_state[receipt_page_key] = max(0, current_page - 1)
                                 st.rerun()
-                    else:
-                        st.caption("All receipts displayed")
+                        
+                        with col2:
+                            # Next button
+                            if st.button("Next ▶", key=f"receipts_next_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                                st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
+                                st.rerun()
+                        
+                        with col3:
+                            # Page number display (centered)
+                            st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                        
+                        with col4:
+                            # Empty column for spacing
+                            pass
                 else:
                     st.info("No receipts available for this topic.")
             
@@ -3989,8 +4058,9 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     # Always show receipts expander
                     receipt_links = topic_card.get('receipt_links', [])
                     if receipt_links:
-                        with st.expander(f"📋 Show Receipts ({len(receipt_links)})"):
-                            st.caption("Source excerpts supporting this insight:")
+                        total_receipts = len(receipt_links)
+                        with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
+                            st.caption("Source excerpts supporting this insight (ranked by relevance):")
                             
                             # Convert receipt references to human-readable display objects
                             receipt_displays = []
@@ -4000,9 +4070,35 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                                 )
                                 receipt_displays.append(receipt_display)
                             
+                            # Create session state key for this topic's receipt page
+                            receipt_page_key = f'receipts_page_takeaway_{source_topic_id}'
+                            if receipt_page_key not in st.session_state:
+                                st.session_state[receipt_page_key] = 0  # Start at page 0
+                            
+                            current_page = st.session_state[receipt_page_key]
+                            page_size = render.RECEIPT_PAGE_SIZE
+                            
+                            # Rank all receipts first (for consistent ordering)
+                            all_ranked_receipts, total_count = render.rank_and_limit_receipts(
+                                receipt_displays,
+                                max_display=len(receipt_displays),  # Rank all, don't limit yet
+                                prioritize_diversity=True
+                            )
+                            
+                            # Calculate pagination
+                            total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+                            start_idx = current_page * page_size
+                            end_idx = min(start_idx + page_size, total_count)
+                            
+                            # Get receipts for current page
+                            displayed_receipts = all_ranked_receipts[start_idx:end_idx]
+                            
+                            # Show progress indicator
+                            st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
+                            
                             # Group by participant label
                             participant_groups = {}
-                            for receipt in receipt_displays:
+                            for receipt in displayed_receipts:
                                 participant_label = receipt['participant_label']
                                 if participant_label not in participant_groups:
                                     participant_groups[participant_label] = []
@@ -4015,21 +4111,50 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                                 for receipt in receipts:
                                     with st.container():
                                         # Show quote excerpt
-                                        if receipt['quote_excerpt'] and receipt['quote_excerpt'] != 'No quote text available':
-                                            st.write(f"*\"{receipt['quote_excerpt']}\"*")
+                                        excerpt = receipt.get('quote_excerpt', '')
+                                        quote_full = receipt.get('quote_full', '')
+                                        
+                                        if excerpt and excerpt != 'No quote text available':
+                                            # Show truncated excerpt
+                                            st.write(f"*\"{excerpt}\"*")
                                             
-                                            # Show full quote if truncated
-                                            if receipt['quote_full'] and len(receipt['quote_full']) > 120:
-                                                with st.expander(f"Show full quote"):
-                                                    st.write(receipt['quote_full'])
+                                            # Show expander for full quote if it's truncated or longer
+                                            is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
+                                            if quote_full and is_truncated:
+                                                with st.expander("📖 Show full quote"):
+                                                    st.write(quote_full)
                                         else:
                                             st.caption("(Quote text not available)")
                                         
                                         # Show source context if available
-                                        if receipt['source_context']:
+                                        if receipt.get('source_context'):
                                             st.caption(f"Source: {receipt['source_context']}")
                                         
                                         st.markdown("---")
+                            
+                            # Pagination controls
+                            if total_pages > 1:
+                                col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                                
+                                with col1:
+                                    # Previous button
+                                    if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
+                                        st.session_state[receipt_page_key] = max(0, current_page - 1)
+                                        st.rerun()
+                                
+                                with col2:
+                                    # Next button
+                                    if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                                        st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
+                                        st.rerun()
+                                
+                                with col3:
+                                    # Page number display (centered)
+                                    st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                                
+                                with col4:
+                                    # Empty column for spacing
+                                    pass
                     else:
                         st.caption("No receipts available")
             
@@ -4142,22 +4267,31 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         )
                         receipt_displays.append(receipt_display)
                     
-                    # Create session state key for this topic's receipt display count
-                    receipt_state_key = f'receipts_displayed_{topic_id}'
-                    if receipt_state_key not in st.session_state:
-                        st.session_state[receipt_state_key] = render.RECEIPT_DISPLAY_DEFAULT
+                    # Create session state key for this topic's receipt page
+                    receipt_page_key = f'receipts_page_{topic_id}'
+                    if receipt_page_key not in st.session_state:
+                        st.session_state[receipt_page_key] = 0  # Start at page 0
                     
-                    current_display_count = st.session_state[receipt_state_key]
+                    current_page = st.session_state[receipt_page_key]
+                    page_size = render.RECEIPT_PAGE_SIZE
                     
-                    # Rank and limit receipts for display
-                    displayed_receipts, total_count = render.rank_and_limit_receipts(
+                    # Rank all receipts first (for consistent ordering)
+                    all_ranked_receipts, total_count = render.rank_and_limit_receipts(
                         receipt_displays,
-                        max_display=current_display_count,
+                        max_display=len(receipt_displays),  # Rank all, don't limit yet
                         prioritize_diversity=True
                     )
                     
+                    # Calculate pagination
+                    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+                    start_idx = current_page * page_size
+                    end_idx = min(start_idx + page_size, total_count)
+                    
+                    # Get receipts for current page
+                    displayed_receipts = all_ranked_receipts[start_idx:end_idx]
+                    
                     # Show progress indicator
-                    st.caption(f"Showing {current_display_count} of {total_count} receipts")
+                    st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
                     
                     # Create a unique container ID for this topic (sanitized)
                     container_id = topic_id.replace(' ', '_').replace(':', '_').replace('-', '_').replace('.', '_')
@@ -4234,25 +4368,29 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # Show "Show more" button if there are more receipts
-                    if total_count > current_display_count:
-                        remaining = total_count - current_display_count
-                        col1, col2 = st.columns([3, 1])
+                    # Pagination controls
+                    if total_pages > 1:
+                        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+                        
                         with col1:
-                            st.caption(f"{remaining} more receipt{'s' if remaining != 1 else ''} available")
-                        with col2:
-                            if st.button(
-                                f"Show {min(render.RECEIPT_DISPLAY_INCREMENT, remaining)} more",
-                                key=f"show_more_receipts_{topic_id}",
-                                use_container_width=True
-                            ):
-                                st.session_state[receipt_state_key] = min(
-                                    current_display_count + render.RECEIPT_DISPLAY_INCREMENT,
-                                    total_count
-                                )
+                            # Previous button
+                            if st.button("◀ Previous", key=f"receipts_prev_{topic_id}", disabled=(current_page == 0), use_container_width=True):
+                                st.session_state[receipt_page_key] = max(0, current_page - 1)
                                 st.rerun()
-                    else:
-                        st.caption("All receipts displayed")
+                        
+                        with col2:
+                            # Next button
+                            if st.button("Next ▶", key=f"receipts_next_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                                st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
+                                st.rerun()
+                        
+                        with col3:
+                            # Page number display (centered)
+                            st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                        
+                        with col4:
+                            # Empty column for spacing
+                            pass
                 else:
                     st.info("No receipts available for this topic.")
             
