@@ -264,6 +264,112 @@ def format_quote_preview(text: Optional[str]) -> str:
     return truncate(text, QUOTE_PREVIEW_MAX)
 
 
+def build_receipt_display(
+    receipt_ref: str,
+    canonical_model,
+    topic_id: Optional[str] = None,
+    max_excerpt_length: int = 120
+) -> Dict[str, Any]:
+    """
+    Convert a receipt reference (participant_id:quote_index) to a human-readable receipt display object.
+    
+    Args:
+        receipt_ref: Receipt reference in format "participant_id:quote_index"
+        canonical_model: CanonicalModel object with evidence_cells and participants
+        topic_id: Optional topic_id to filter evidence cells (for efficiency)
+        max_excerpt_length: Maximum length for quote excerpt (default 120)
+    
+    Returns:
+        Dictionary with:
+        - participant_id: str (internal ID, kept for reference)
+        - participant_label: str (human-readable participant name/label)
+        - quote_excerpt: str (truncated quote text)
+        - quote_full: str (full quote text)
+        - quote_index: int (internal quote index)
+        - source_context: str (optional context like "Interview" or "Response")
+        - receipt_ref: str (original reference, kept for internal use)
+    """
+    if not receipt_ref or ':' not in receipt_ref:
+        return {
+            'participant_id': '',
+            'participant_label': 'Unknown',
+            'quote_excerpt': 'Invalid receipt reference',
+            'quote_full': '',
+            'quote_index': -1,
+            'source_context': None,
+            'receipt_ref': receipt_ref
+        }
+    
+    participant_id, quote_index_str = receipt_ref.split(':', 1)
+    
+    # Try to parse quote_index as int
+    try:
+        quote_index = int(quote_index_str)
+    except ValueError:
+        quote_index = -1
+    
+    # Find participant label
+    participant_label = participant_id  # Default to ID
+    if canonical_model and canonical_model.participants:
+        participant = next(
+            (p for p in canonical_model.participants if p.participant_id == participant_id),
+            None
+        )
+        if participant:
+            participant_label = participant.participant_label or participant.participant_id
+    
+    # Find the quote text from evidence cells
+    quote_text = ''
+    evidence_cell = None
+    
+    if canonical_model and canonical_model.evidence_cells:
+        # Filter by topic_id if provided for efficiency
+        cells_to_check = [
+            ec for ec in canonical_model.evidence_cells
+            if ec.participant_id == participant_id
+            and (topic_id is None or ec.topic_id == topic_id)
+        ]
+        
+        for cell in cells_to_check:
+            if not cell.quotes_raw:
+                continue
+            
+            import parse_quotes
+            quote_blocks = parse_quotes.parse_quotes(cell.quotes_raw)
+            
+            for quote_block in quote_blocks:
+                block_index = quote_block.get('quote_index', -1)
+                # Match both string and int representations
+                if block_index == quote_index or str(block_index) == quote_index_str:
+                    quote_text = quote_block.get('quote_text', '').strip()
+                    evidence_cell = cell
+                    break
+            
+            if quote_text:
+                break
+    
+    # Generate excerpt
+    quote_excerpt = truncate(quote_text, max_excerpt_length) if quote_text else 'No quote text available'
+    
+    # Determine source context
+    source_context = None
+    if evidence_cell and evidence_cell.participant_meta:
+        # Try to infer context from metadata
+        meta = evidence_cell.participant_meta
+        if 'source' in meta or 'context' in meta or 'type' in meta:
+            source_context = meta.get('source') or meta.get('context') or meta.get('type')
+    
+    return {
+        'participant_id': participant_id,
+        'participant_label': participant_label,
+        'quote_excerpt': quote_excerpt,
+        'quote_full': quote_text,
+        'quote_index': quote_index,
+        'source_context': source_context,
+        'receipt_ref': receipt_ref  # Keep original for internal reference
+    }
+
+
 # Unit tests
 if __name__ == '__main__':
     import unittest
