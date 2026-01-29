@@ -10,6 +10,7 @@ import parse_quotes
 import parse_sentiment
 import score
 import digest
+import re
 import render
 import export
 import edge_cases
@@ -959,10 +960,38 @@ def render_takeaways(digest_artifact: Dict[str, Any]):
                     
                     # Proof quote preview (truncated to 320 chars)
                     proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
-                    proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
-                    proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
                     
-                    if proof_quote_preview_truncated:
+                    # Check if this is a fallback message or invalid quote
+                    is_fallback = proof_quote_preview_full == "No representative quote available"
+                    is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
+                    
+                    # Additional validation: check if it's not just a numeric placeholder
+                    if is_valid_quote:
+                        text_stripped = proof_quote_preview_full.strip()
+                        # Check if it's just a numeric index pattern
+                        numeric_patterns = [
+                            r'^\d+\.?\s*$',  # "1", "1.", "1. "
+                            r'^\d+\)\s*$',   # "1)"
+                            r'^\(\d+\)\s*$', # "(1)"
+                        ]
+                        for pattern in numeric_patterns:
+                            if re.match(pattern, text_stripped):
+                                is_valid_quote = False
+                                break
+                        # Check if it has actual words (letters)
+                        if is_valid_quote:
+                            text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
+                            if not re.search(r'[a-zA-Z]', text_no_punct):
+                                is_valid_quote = False
+                    
+                    if is_fallback or not is_valid_quote:
+                        # Show fallback message
+                        with st.expander("💬 Proof Quote"):
+                            st.info("No representative quote available")
+                    elif proof_quote_preview_full:
+                        proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
+                        proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
+                        
                         with st.expander("💬 Proof Quote"):
                             # Show truncated preview
                             st.write(proof_quote_preview_truncated)
@@ -1017,8 +1046,30 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
         evidence_count = card.get('evidence_count', 0)  # Always show this
         sentiment_mix = card.get('sentiment_mix', {})
         proof_quote_preview_full = card.get('proof_quote_preview', '')
-        proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
-        proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
+        
+        # Check if this is a fallback message or invalid quote
+        is_fallback = proof_quote_preview_full == "No representative quote available"
+        is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
+        
+        # Additional validation: check if it's not just a numeric placeholder
+        if is_valid_quote:
+            text_stripped = proof_quote_preview_full.strip()
+            # Check if it's just a numeric index pattern
+            numeric_patterns = [
+                r'^\d+\.?\s*$',  # "1", "1.", "1. "
+                r'^\d+\)\s*$',   # "1)"
+                r'^\(\d+\)\s*$', # "(1)"
+            ]
+            for pattern in numeric_patterns:
+                if re.match(pattern, text_stripped):
+                    is_valid_quote = False
+                    break
+            # Check if it has actual words (letters)
+            if is_valid_quote:
+                text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
+                if not re.search(r'[a-zA-Z]', text_no_punct):
+                    is_valid_quote = False
+        
         receipt_links = card.get('receipt_links', [])
         
         with st.container():
@@ -1043,7 +1094,14 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
             
             # Proof quote preview (truncated to 320 chars)
-            if proof_quote_preview_truncated:
+            if is_fallback or not is_valid_quote:
+                # Show fallback message
+                with st.expander("💬 Proof Quote"):
+                    st.info("No representative quote available")
+            elif proof_quote_preview_full:
+                proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
+                proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
+                
                 with st.expander("💬 Proof Quote"):
                     # Show truncated preview
                     st.write(proof_quote_preview_truncated)

@@ -53,6 +53,57 @@ def _is_readable_length(text: str, min_length: int = 20, max_length: int = 500) 
     return min_length <= length <= max_length
 
 
+def _is_valid_quote_text(text: str, min_length: int = 10) -> bool:
+    """
+    Validate that quote text is meaningful and not just a placeholder/index.
+    
+    Checks:
+    - Not empty or whitespace only
+    - Minimum length requirement
+    - Contains actual words (not just numbers/punctuation)
+    - Not just a numeric index like "1." or "1)"
+    
+    Args:
+        text: Quote text to validate
+        min_length: Minimum character length (default 10)
+    
+    Returns:
+        True if quote is valid and meaningful
+    """
+    if not text or not text.strip():
+        return False
+    
+    text_stripped = text.strip()
+    
+    # Check minimum length
+    if len(text_stripped) < min_length:
+        return False
+    
+    # Check if it's just a numeric index pattern (e.g., "1.", "1)", "(1)", "1. ")
+    import re
+    numeric_patterns = [
+        r'^\d+\.?\s*$',  # "1", "1.", "1. "
+        r'^\d+\)\s*$',   # "1)"
+        r'^\(\d+\)\s*$', # "(1)"
+    ]
+    for pattern in numeric_patterns:
+        if re.match(pattern, text_stripped):
+            return False
+    
+    # Check if it contains actual words (at least one letter)
+    # Remove common punctuation and check for letters
+    text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
+    if not re.search(r'[a-zA-Z]', text_no_punct):
+        # No letters found, likely just numbers/punctuation
+        return False
+    
+    # Check if it's mostly punctuation/whitespace
+    if len(text_no_punct.strip()) < min_length // 2:
+        return False
+    
+    return True
+
+
 def _get_quote_blocks_for_evidence(evidence_cell) -> List[Dict[str, Any]]:
     """
     Get parsed quote blocks for an evidence cell.
@@ -267,12 +318,22 @@ def _select_proof_quote(
         key = (participant_id, sentiment_block['quote_index'])
         sentiment_map[key] = sentiment_block
     
-    # Score each quote
+    # Score each quote - FILTER OUT INVALID QUOTES
     scored_quotes = []
     
     for (participant_id, quote_index), quote_block in quote_map.items():
-        score = 0.0
+        # Get quote text from both quote_preview and quote_text
         quote_text = quote_block.get('quote_text', '')
+        quote_preview = quote_block.get('quote_preview', '')
+        
+        # Use quote_text as primary, fallback to quote_preview
+        primary_text = quote_text if quote_text else quote_preview
+        
+        # CRITICAL: Skip invalid quotes (placeholders, indices, too short, etc.)
+        if not _is_valid_quote_text(primary_text):
+            continue  # Skip this quote entirely
+        
+        score = 0.0
         sentiment_block = sentiment_map.get((participant_id, quote_index))
         
         # Preference 1: Non-neutral tone (higher score)
@@ -292,11 +353,11 @@ def _select_proof_quote(
             score += 1.0  # No sentiment info
         
         # Preference 2: Readable length (bonus)
-        if _is_readable_length(quote_text):
+        if _is_readable_length(primary_text):
             score += 5.0
-        elif len(quote_text) < 20:
+        elif len(primary_text) < 20:
             score -= 2.0  # Penalize too short
-        elif len(quote_text) > 500:
+        elif len(primary_text) > 500:
             score -= 1.0  # Slight penalty for too long
         
         # Preference 3: Penalize moderator tags
@@ -308,23 +369,52 @@ def _select_proof_quote(
             'participant_id': participant_id,
             'quote_index': quote_index,
             'quote_block': quote_block,
-            'score': score
+            'score': score,
+            'quote_text': primary_text
         })
     
+    # If no valid quotes found after filtering, return fallback message
     if not scored_quotes:
-        return None, None
+        return None, "No representative quote available"
     
     # Sort by score (descending), then by participant_id and quote_index for tiebreak
     scored_quotes.sort(key=lambda x: (-x['score'], x['participant_id'], x['quote_index']))
     
-    # Select top quote
+    # Select top quote and validate it one more time
     top_quote = scored_quotes[0]
     participant_id = top_quote['participant_id']
     quote_index = top_quote['quote_index']
     quote_block = top_quote['quote_block']
+    final_quote_text = top_quote['quote_text']
+    
+    # Final validation - ensure the selected quote is still valid
+    if not _is_valid_quote_text(final_quote_text):
+        # If somehow an invalid quote got through, try next best
+        for quote in scored_quotes[1:]:
+            candidate_text = quote['quote_text']
+            if _is_valid_quote_text(candidate_text):
+                participant_id = quote['participant_id']
+                quote_index = quote['quote_index']
+                quote_block = quote['quote_block']
+                final_quote_text = candidate_text
+                break
+        else:
+            # No valid quote found even after checking all
+            return None, "No representative quote available"
     
     proof_quote_ref = f"{participant_id}:{quote_index}"
-    proof_quote_preview = quote_block.get('quote_preview', quote_block.get('quote_text', ''))
+    
+    # Prefer quote_text, fallback to quote_preview, but ensure it's valid
+    proof_quote_preview = quote_block.get('quote_text', '')
+    if not proof_quote_preview or not _is_valid_quote_text(proof_quote_preview):
+        proof_quote_preview = quote_block.get('quote_preview', '')
+        if not proof_quote_preview or not _is_valid_quote_text(proof_quote_preview):
+            # Use the validated text we already have
+            proof_quote_preview = final_quote_text
+    
+    # Final safety check
+    if not _is_valid_quote_text(proof_quote_preview):
+        return None, "No representative quote available"
     
     return proof_quote_ref, proof_quote_preview
 
