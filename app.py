@@ -923,6 +923,12 @@ def render_takeaways(digest_artifact: Dict[str, Any]):
         takeaway_text_truncated = render.format_takeaway_text(takeaway_text_full)
         source_topic_id = takeaway.get('source_topic_id', '')
         
+        # Capitalize first letter of each word in source_topic_id (Title Case)
+        source_topic_label = source_topic_id
+        if source_topic_label:
+            words = source_topic_label.split()
+            source_topic_label = ' '.join(word.capitalize() for word in words)
+        
         # Find corresponding topic card
         topic_cards = digest_artifact.get('topic_cards', [])
         topic_card = next((tc for tc in topic_cards if tc['topic_id'] == source_topic_id), None)
@@ -943,7 +949,7 @@ def render_takeaways(digest_artifact: Dict[str, Any]):
                         st.write(takeaway_text_full)
                 
                 if source_topic_id:
-                    st.caption(f"From: {source_topic_id}")
+                    st.caption(f"From: {source_topic_label}")
             
             with col2:
                 if topic_card:
@@ -997,6 +1003,12 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
     
     for card in topic_cards:
         topic_id = card.get('topic_id', '')
+        # Capitalize first letter of each word in topic_id (Title Case)
+        topic_label = topic_id
+        if topic_label:
+            words = topic_label.split()
+            topic_label = ' '.join(word.capitalize() for word in words)
+        
         topic_oneliner_full = card.get('topic_one_liner') or ''
         topic_oneliner_truncated = render.format_topic_oneliner(topic_oneliner_full)
         topic_oneliner_is_truncated = len(topic_oneliner_full) > render.TOPIC_ONELINER_MAX
@@ -1010,7 +1022,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
         receipt_links = card.get('receipt_links', [])
         
         with st.container():
-            st.markdown(f"### {topic_id}")
+            st.markdown(f"### {topic_label}")
             
             # Topic one-liner (truncated to 240 chars)
             if topic_oneliner_truncated:
