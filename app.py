@@ -1237,32 +1237,39 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                             participant_groups[participant_label] = []
                         participant_groups[participant_label].append(receipt)
                     
-                    # Build HTML for receipts in scrollable container
-                    receipts_html = f'<div class="receipts-scrollable-{container_id}">'
+                    # Create scrollable container wrapper with HTML
+                    st.markdown(f'<div class="receipts-scrollable-{container_id}">', unsafe_allow_html=True)
                     
+                    # Display receipts using Streamlit components (so expanders work)
                     for participant_label, receipts in participant_groups.items():
-                        # Escape HTML in participant label
-                        participant_escaped = participant_label.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                        receipts_html += f'<div style="margin-bottom: 16px;"><strong>{participant_escaped}</strong>'
+                        st.markdown(f"**{participant_label}**")
                         
                         for receipt in receipts:
-                            excerpt = receipt.get('quote_excerpt', '')
-                            if excerpt and excerpt != 'No quote text available':
-                                # Escape HTML in excerpt
-                                excerpt_escaped = excerpt.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
-                                receipts_html += f'<div style="margin: 8px 0; padding: 8px; background-color: white; border-left: 3px solid #655CFE; border-radius: 4px;">'
-                                receipts_html += f'<em>"{excerpt_escaped}"</em>'
+                            with st.container():
+                                # Show quote excerpt
+                                excerpt = receipt.get('quote_excerpt', '')
+                                quote_full = receipt.get('quote_full', '')
+                                
+                                if excerpt and excerpt != 'No quote text available':
+                                    # Show truncated excerpt
+                                    st.write(f"*\"{excerpt}\"*")
+                                    
+                                    # Show expander for full quote if it's truncated or longer
+                                    # Check if excerpt ends with "..." (truncated) or if full quote is significantly longer
+                                    is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
+                                    if quote_full and is_truncated:
+                                        with st.expander("📖 Show full quote"):
+                                            st.write(quote_full)
+                                else:
+                                    st.caption("(Quote text not available)")
+                                
+                                # Show source context if available
                                 if receipt.get('source_context'):
-                                    source_escaped = str(receipt['source_context']).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                                    receipts_html += f'<div style="font-size: 0.85em; color: #6b7280; margin-top: 4px;">Source: {source_escaped}</div>'
-                                receipts_html += '</div>'
-                            else:
-                                receipts_html += '<div style="margin: 8px 0; color: #6b7280; font-size: 0.9em;">(Quote text not available)</div>'
-                        
-                        receipts_html += '</div>'
+                                    st.caption(f"Source: {receipt['source_context']}")
+                                
+                                st.markdown("---")
                     
-                    receipts_html += '</div>'
-                    st.markdown(receipts_html, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
                     
                     # Show "Show more" button if there are more receipts
                     if total_count > current_display_count:
@@ -4193,32 +4200,39 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                             participant_groups[participant_label] = []
                         participant_groups[participant_label].append(receipt)
                     
-                    # Build HTML for receipts in scrollable container
-                    receipts_html = f'<div class="receipts-scrollable-{container_id}">'
+                    # Create scrollable container wrapper with HTML
+                    st.markdown(f'<div class="receipts-scrollable-{container_id}">', unsafe_allow_html=True)
                     
+                    # Display receipts using Streamlit components (so expanders work)
                     for participant_label, receipts in participant_groups.items():
-                        # Escape HTML in participant label
-                        participant_escaped = participant_label.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                        receipts_html += f'<div style="margin-bottom: 16px;"><strong>{participant_escaped}</strong>'
+                        st.markdown(f"**{participant_label}**")
                         
                         for receipt in receipts:
-                            excerpt = receipt.get('quote_excerpt', '')
-                            if excerpt and excerpt != 'No quote text available':
-                                # Escape HTML in excerpt
-                                excerpt_escaped = excerpt.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
-                                receipts_html += f'<div style="margin: 8px 0; padding: 8px; background-color: white; border-left: 3px solid #655CFE; border-radius: 4px;">'
-                                receipts_html += f'<em>"{excerpt_escaped}"</em>'
+                            with st.container():
+                                # Show quote excerpt
+                                excerpt = receipt.get('quote_excerpt', '')
+                                quote_full = receipt.get('quote_full', '')
+                                
+                                if excerpt and excerpt != 'No quote text available':
+                                    # Show truncated excerpt
+                                    st.write(f"*\"{excerpt}\"*")
+                                    
+                                    # Show expander for full quote if it's truncated or longer
+                                    # Check if excerpt ends with "..." (truncated) or if full quote is significantly longer
+                                    is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
+                                    if quote_full and is_truncated:
+                                        with st.expander("📖 Show full quote"):
+                                            st.write(quote_full)
+                                else:
+                                    st.caption("(Quote text not available)")
+                                
+                                # Show source context if available
                                 if receipt.get('source_context'):
-                                    source_escaped = str(receipt['source_context']).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                                    receipts_html += f'<div style="font-size: 0.85em; color: #6b7280; margin-top: 4px;">Source: {source_escaped}</div>'
-                                receipts_html += '</div>'
-                            else:
-                                receipts_html += '<div style="margin: 8px 0; color: #6b7280; font-size: 0.9em;">(Quote text not available)</div>'
-                        
-                        receipts_html += '</div>'
+                                    st.caption(f"Source: {receipt['source_context']}")
+                                
+                                st.markdown("---")
                     
-                    receipts_html += '</div>'
-                    st.markdown(receipts_html, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
                     
                     # Show "Show more" button if there are more receipts
                     if total_count > current_display_count:

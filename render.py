@@ -10,7 +10,7 @@ QUOTE_PREVIEW_MAX = 320
 
 # Receipt display limits
 RECEIPT_DISPLAY_DEFAULT = 5  # Default number of receipts to show (small subset for readability)
-RECEIPT_DISPLAY_INCREMENT = 5  # Number of additional receipts per "Show more" click
+RECEIPT_DISPLAY_INCREMENT = 10  # Number of additional receipts per "Show more" click
 RECEIPT_CONTAINER_MAX_HEIGHT = "400px"  # Max height for scrollable receipts container
 
 
