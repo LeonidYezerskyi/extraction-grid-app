@@ -1100,24 +1100,29 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                                         
                                         st.markdown("---")
                             
-                            # Pagination controls (vertical layout: Previous on top, Next below)
+                            # Pagination controls (horizontal layout for Key Takeaways)
                             if total_pages > 1:
-                                col1, col2 = st.columns([1, 3])
+                                col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
                                 
                                 with col1:
-                                    # Previous button (on top)
+                                    # Previous button
                                     if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
                                         st.session_state[receipt_page_key] = max(0, current_page - 1)
                                         st.rerun()
-                                    
-                                    # Next button (below previous)
+                                
+                                with col2:
+                                    # Next button
                                     if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
                                         st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
                                         st.rerun()
                                 
-                                with col2:
+                                with col3:
                                     # Page number display (centered)
                                     st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                                
+                                with col4:
+                                    # Empty column for spacing
+                                    pass
                     else:
                         st.caption("No receipts available")
             
@@ -4127,24 +4132,29 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                                         
                                         st.markdown("---")
                             
-                            # Pagination controls (vertical layout: Previous on top, Next below)
+                            # Pagination controls (horizontal layout for Key Takeaways)
                             if total_pages > 1:
-                                col1, col2 = st.columns([1, 3])
+                                col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
                                 
                                 with col1:
-                                    # Previous button (on top)
+                                    # Previous button
                                     if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
                                         st.session_state[receipt_page_key] = max(0, current_page - 1)
                                         st.rerun()
-                                    
-                                    # Next button (below previous)
+                                
+                                with col2:
+                                    # Next button
                                     if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
                                         st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
                                         st.rerun()
                                 
-                                with col2:
+                                with col3:
                                     # Page number display (centered)
                                     st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                                
+                                with col4:
+                                    # Empty column for spacing
+                                    pass
                     else:
                         st.caption("No receipts available")
             
