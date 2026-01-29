@@ -5791,37 +5791,3 @@ if __name__ == "__main__" and False:  # Set to True to run tests
 
 if __name__ == "__main__":
     main()
-        def test_reset_to_top_n(self):
-            """Test reset to top N function."""
-            top_topics = ['t1', 't2', 't3', 't4', 't5']
-            result = reset_to_top_n(top_topics, 3)
-            self.assertEqual(result, ['t1', 't2', 't3'])
-        
-        def test_clear_selection(self):
-            """Test clear selection function."""
-            result = clear_selection()
-            self.assertEqual(result, [])
-        
-        def test_compute_selected_topics_auto_select_false(self):
-            """Test that auto_select=False preserves current selection."""
-            top_topics = ['t1', 't2', 't3']
-            current = ['t2', 't3']  # User's manual selection
-            selected = compute_selected_topics(top_topics, current, 3, False, False, None)
-            # Should preserve user's selection
-            self.assertEqual(selected, current)
-        
-        def test_compute_selected_topics_order(self):
-            """Test that selection maintains proper order."""
-            top_topics = ['t1', 't2', 't3', 't4', 't5']
-            # Top 3 + manually added t10
-            current = ['t1', 't2', 't3', 't10']
-            selected = compute_selected_topics(top_topics, current, 3, True, False, 3)
-            # Top N should come first, then manually added
-            self.assertEqual(selected[:3], ['t1', 't2', 't3'])
-            self.assertIn('t10', selected[3:])
-    
-    unittest.main()
-
-
-if __name__ == "__main__":
-    main()
