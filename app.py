@@ -1934,11 +1934,16 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
             
             if is_truncated:
-                # Show truncated text
-                st.markdown(summary_truncated)
-                # Expand/collapse using expander (local state only)
-                with st.expander("📖 Show full summary", expanded=False):
+                # For long summaries: use toggle to switch between truncated and full
+                # Create unique key for this topic's toggle
+                toggle_key = f"show_full_summary_{topic.topic_id}_{idx}"
+                show_full = st.toggle("📖 Show full summary", key=toggle_key, value=False)
+                
+                # Show either preview or full summary based on toggle
+                if show_full:
                     st.markdown(summary_full)
+                else:
+                    st.markdown(summary_truncated)
             else:
                 # Show full text if not truncated
                 st.markdown(summary_full)
@@ -4873,11 +4878,16 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
             
             if is_truncated:
-                # Show truncated text
-                st.markdown(summary_truncated)
-                # Expand/collapse using expander (local state only)
-                with st.expander("📖 Show full summary", expanded=False):
+                # For long summaries: use toggle to switch between truncated and full
+                # Create unique key for this topic's toggle
+                toggle_key = f"show_full_summary_{topic.topic_id}_{idx}"
+                show_full = st.toggle("📖 Show full summary", key=toggle_key, value=False)
+                
+                # Show either preview or full summary based on toggle
+                if show_full:
                     st.markdown(summary_full)
+                else:
+                    st.markdown(summary_truncated)
             else:
                 # Show full text if not truncated
                 st.markdown(summary_full)
