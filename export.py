@@ -254,7 +254,6 @@ def export_to_html(digest_artifact: Dict[str, Any], canonical_model=None) -> str
                 
                 # Build full receipts if canonical_model is available
                 if canonical_model:
-                    import render
                     receipt_displays = []
                     for receipt_ref in receipt_links:
                         receipt_display = render.build_receipt_display(
@@ -405,7 +404,6 @@ def export_to_markdown(digest_artifact: Dict[str, Any], canonical_model=None) ->
                 
                 # Build full receipts if canonical_model is available
                 if canonical_model:
-                    import render
                     receipt_displays = []
                     for receipt_ref in receipt_links:
                         receipt_display = render.build_receipt_display(
