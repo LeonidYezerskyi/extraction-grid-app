@@ -847,7 +847,32 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         aggregates_for_export = st.session_state.get('filtered_aggregates', topic_aggregates)
         if aggregates_for_export:
             selected_aggregates = [t for t in aggregates_for_export if t['topic_id'] in selected_topic_ids]
-            digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
+            if selected_aggregates:
+                digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
+            else:
+                # Empty digest if no selected aggregates
+                digest_artifact = {
+                    'takeaways': [],
+                    'topic_cards': [],
+                    'metadata': {
+                        'n_takeaways': 0,
+                        'n_topics': 0,
+                        'total_participants': len(canonical_model.participants) if canonical_model else 0,
+                        'total_evidence_cells': len(canonical_model.evidence_cells) if canonical_model else 0
+                    }
+                }
+        else:
+            # Empty digest if no aggregates
+            digest_artifact = {
+                'takeaways': [],
+                'topic_cards': [],
+                'metadata': {
+                    'n_takeaways': 0,
+                    'n_topics': 0,
+                    'total_participants': len(canonical_model.participants) if canonical_model else 0,
+                    'total_evidence_cells': len(canonical_model.evidence_cells) if canonical_model else 0
+                }
+            }
         
         html_content = export.export_to_html(digest_artifact, canonical_model)
         st.sidebar.download_button(
@@ -3712,7 +3737,32 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         aggregates_for_export = st.session_state.get('filtered_aggregates', topic_aggregates)
         if aggregates_for_export:
             selected_aggregates = [t for t in aggregates_for_export if t['topic_id'] in selected_topic_ids]
-            digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
+            if selected_aggregates:
+                digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
+            else:
+                # Empty digest if no selected aggregates
+                digest_artifact = {
+                    'takeaways': [],
+                    'topic_cards': [],
+                    'metadata': {
+                        'n_takeaways': 0,
+                        'n_topics': 0,
+                        'total_participants': len(canonical_model.participants) if canonical_model else 0,
+                        'total_evidence_cells': len(canonical_model.evidence_cells) if canonical_model else 0
+                    }
+                }
+        else:
+            # Empty digest if no aggregates
+            digest_artifact = {
+                'takeaways': [],
+                'topic_cards': [],
+                'metadata': {
+                    'n_takeaways': 0,
+                    'n_topics': 0,
+                    'total_participants': len(canonical_model.participants) if canonical_model else 0,
+                    'total_evidence_cells': len(canonical_model.evidence_cells) if canonical_model else 0
+                }
+            }
         
         html_content = export.export_to_html(digest_artifact, canonical_model)
         st.sidebar.download_button(
