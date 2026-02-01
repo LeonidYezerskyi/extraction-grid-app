@@ -1108,23 +1108,41 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         if quote_full and quote_full != 'No quote text available':
                             # Check if quote is longer than 400 chars
                             is_long_quote = len(quote_full) > 400
-                            quote_display = quote_full
                             
                             if is_long_quote:
                                 # Truncate to ~400 chars for initial display
-                                quote_display = render.truncate(quote_full, 400)
-                            
-                            # Display receipt with participant label, quote, and sentiment
-                            col1, col2 = st.columns([4, 1])
-                            with col1:
-                                st.write(f"**{participant_label}**: \"{quote_display}\"")
-                                # Show expander for full quote if truncated
-                                if is_long_quote:
+                                quote_preview = render.truncate(quote_full, 400)
+                                
+                                # Display receipt with participant label, quote preview, and sentiment
+                                col1, col2 = st.columns([4, 1])
+                                with col1:
+                                    st.write(f"**{participant_label}**: \"{quote_preview}\"")
+                                    # Show expander with continuation (rest of quote after preview)
                                     with st.expander("📖 Show full quote"):
-                                        st.write(quote_full)
-                            with col2:
-                                if sentiment:
-                                    st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
+                                        # Show only the continuation part (after the preview)
+                                        # Find where preview ends (remove ellipsis if present)
+                                        preview_clean = quote_preview.rstrip('...').strip()
+                                        if quote_full.startswith(preview_clean):
+                                            quote_continuation = quote_full[len(preview_clean):].lstrip()
+                                            if quote_continuation:
+                                                st.write(quote_continuation)
+                                            else:
+                                                # If no continuation (edge case), show full quote
+                                                st.write(quote_full)
+                                        else:
+                                            # Fallback: show full quote if preview doesn't match
+                                            st.write(quote_full)
+                                with col2:
+                                    if sentiment:
+                                        st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
+                            else:
+                                # Short quote - show full text without expander
+                                col1, col2 = st.columns([4, 1])
+                                with col1:
+                                    st.write(f"**{participant_label}**: \"{quote_full}\"")
+                                with col2:
+                                    if sentiment:
+                                        st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
                         else:
                             st.caption(f"**{participant_label}**: (Quote text not available)")
                         
@@ -3935,23 +3953,41 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         if quote_full and quote_full != 'No quote text available':
                             # Check if quote is longer than 400 chars
                             is_long_quote = len(quote_full) > 400
-                            quote_display = quote_full
                             
                             if is_long_quote:
                                 # Truncate to ~400 chars for initial display
-                                quote_display = render.truncate(quote_full, 400)
-                            
-                            # Display receipt with participant label, quote, and sentiment
-                            col1, col2 = st.columns([4, 1])
-                            with col1:
-                                st.write(f"**{participant_label}**: \"{quote_display}\"")
-                                # Show expander for full quote if truncated
-                                if is_long_quote:
+                                quote_preview = render.truncate(quote_full, 400)
+                                
+                                # Display receipt with participant label, quote preview, and sentiment
+                                col1, col2 = st.columns([4, 1])
+                                with col1:
+                                    st.write(f"**{participant_label}**: \"{quote_preview}\"")
+                                    # Show expander with continuation (rest of quote after preview)
                                     with st.expander("📖 Show full quote"):
-                                        st.write(quote_full)
-                            with col2:
-                                if sentiment:
-                                    st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
+                                        # Show only the continuation part (after the preview)
+                                        # Find where preview ends (remove ellipsis if present)
+                                        preview_clean = quote_preview.rstrip('...').strip()
+                                        if quote_full.startswith(preview_clean):
+                                            quote_continuation = quote_full[len(preview_clean):].lstrip()
+                                            if quote_continuation:
+                                                st.write(quote_continuation)
+                                            else:
+                                                # If no continuation (edge case), show full quote
+                                                st.write(quote_full)
+                                        else:
+                                            # Fallback: show full quote if preview doesn't match
+                                            st.write(quote_full)
+                                with col2:
+                                    if sentiment:
+                                        st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
+                            else:
+                                # Short quote - show full text without expander
+                                col1, col2 = st.columns([4, 1])
+                                with col1:
+                                    st.write(f"**{participant_label}**: \"{quote_full}\"")
+                                with col2:
+                                    if sentiment:
+                                        st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
                         else:
                             st.caption(f"**{participant_label}**: (Quote text not available)")
                         
