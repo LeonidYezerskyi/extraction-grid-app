@@ -1452,6 +1452,10 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     # Show active recipient label
     st.markdown(f"### 📊 Explore Topics — *{selected_recipient.label}*")
     
+    # Show info if recipient filtering is not configured (all recipients have empty priority/deprioritized lists)
+    if not selected_recipient.priority_topics and not selected_recipient.deprioritized_topics:
+        st.info("ℹ️ Recipient filtering is not configured. All topics are shown with default ranking. To enable filtering, configure `priority_topics` and `deprioritized_topics` in recipient profiles.")
+    
     # Empty state: No topics after recipient filtering
     if not filtered_topics:
         if len(ranked_topics) == 0:
@@ -4399,6 +4403,10 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     
     # Show active recipient label
     st.markdown(f"### 📊 Explore Topics — *{selected_recipient.label}*")
+    
+    # Show info if recipient filtering is not configured (all recipients have empty priority/deprioritized lists)
+    if not selected_recipient.priority_topics and not selected_recipient.deprioritized_topics:
+        st.info("ℹ️ Recipient filtering is not configured. All topics are shown with default ranking. To enable filtering, configure `priority_topics` and `deprioritized_topics` in recipient profiles.")
     
     # Empty state: No topics after recipient filtering
     if not filtered_topics:
