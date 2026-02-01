@@ -762,8 +762,12 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.markdown("**Filters**")
     
     # Coverage tier
-    # Check if key exists - if not, use index 0 (empty), otherwise use current value
-    if 'coverage_tier_filter' not in st.session_state:
+    # Check reset flag first - if set, force index 0 (empty)
+    if st.session_state.get('_reset_filters_flag', False):
+        coverage_tier_index = 0
+        # Clear the reset flag after using it
+        st.session_state['_reset_filters_flag'] = False
+    elif 'coverage_tier_filter' not in st.session_state:
         coverage_tier_index = 0
     else:
         coverage_tier_value = st.session_state.get('coverage_tier_filter', '')
@@ -782,8 +786,11 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.session_state[SESSION_KEYS['filters']]['coverage_tier'] = coverage_tier if coverage_tier else None
     
     # Tone rollup
-    # Check if key exists - if not, use index 0 (empty), otherwise use current value
-    if 'tone_rollup_filter' not in st.session_state:
+    # Check reset flag first - if set, force index 0 (empty)
+    if st.session_state.get('_reset_filters_flag', False):
+        tone_rollup_index = 0
+        # Don't clear the flag here - it will be cleared after coverage_tier
+    elif 'tone_rollup_filter' not in st.session_state:
         tone_rollup_index = 0
     else:
         tone_rollup_value = st.session_state.get('tone_rollup_filter', '')
@@ -827,8 +834,9 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         }
         st.session_state[SESSION_KEYS['search_query']] = ''
         st.session_state['participant_filter_patterns'] = []
+        # Set reset flag to force widgets to use empty values
+        st.session_state['_reset_filters_flag'] = True
         # Reset widget values by removing their keys from session_state
-        # This allows widgets to use their default values on rerun
         keys_to_remove = ['coverage_tier_filter', 'tone_rollup_filter', 'high_emotion_filter', 'search_input', 'participant_filter_input']
         for key in keys_to_remove:
             if key in st.session_state:
@@ -3670,8 +3678,12 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.markdown("**Filters**")
     
     # Coverage tier
-    # Check if key exists - if not, use index 0 (empty), otherwise use current value
-    if 'coverage_tier_filter' not in st.session_state:
+    # Check reset flag first - if set, force index 0 (empty)
+    if st.session_state.get('_reset_filters_flag', False):
+        coverage_tier_index = 0
+        # Clear the reset flag after using it
+        st.session_state['_reset_filters_flag'] = False
+    elif 'coverage_tier_filter' not in st.session_state:
         coverage_tier_index = 0
     else:
         coverage_tier_value = st.session_state.get('coverage_tier_filter', '')
@@ -3690,8 +3702,11 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.session_state[SESSION_KEYS['filters']]['coverage_tier'] = coverage_tier if coverage_tier else None
     
     # Tone rollup
-    # Check if key exists - if not, use index 0 (empty), otherwise use current value
-    if 'tone_rollup_filter' not in st.session_state:
+    # Check reset flag first - if set, force index 0 (empty)
+    if st.session_state.get('_reset_filters_flag', False):
+        tone_rollup_index = 0
+        # Don't clear the flag here - it will be cleared after coverage_tier
+    elif 'tone_rollup_filter' not in st.session_state:
         tone_rollup_index = 0
     else:
         tone_rollup_value = st.session_state.get('tone_rollup_filter', '')
@@ -3735,8 +3750,9 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         }
         st.session_state[SESSION_KEYS['search_query']] = ''
         st.session_state['participant_filter_patterns'] = []
+        # Set reset flag to force widgets to use empty values
+        st.session_state['_reset_filters_flag'] = True
         # Reset widget values by removing their keys from session_state
-        # This allows widgets to use their default values on rerun
         keys_to_remove = ['coverage_tier_filter', 'tone_rollup_filter', 'high_emotion_filter', 'search_input', 'participant_filter_input']
         for key in keys_to_remove:
             if key in st.session_state:
