@@ -1043,12 +1043,21 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
             col1, col2 = st.columns([3, 1])
             
             with col1:
-                # Show truncated text (max 180 chars)
-                st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
-                
-                # Always show expander for full takeaway text
-                with st.expander("📖 Show full takeaway"):
-                    st.write(takeaway_text_full)
+                # Check if text was truncated
+                if is_truncated:
+                    # For long takeaways: use toggle to switch between truncated and full
+                    # Create unique key for this takeaway's toggle
+                    toggle_key = f"show_full_takeaway_{source_topic_id}_{takeaway_index}"
+                    show_full = st.toggle("📖 Show full takeaway", key=toggle_key, value=False)
+                    
+                    # Show either preview or full takeaway based on toggle
+                    if show_full:
+                        st.write(f"**{takeaway_index}.** {takeaway_text_full}")
+                    else:
+                        st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
+                else:
+                    # Show full text if not truncated
+                    st.write(f"**{takeaway_index}.** {takeaway_text_full}")
                 
                 if source_topic_id:
                     st.caption(f"From: {source_topic_label}")
@@ -3910,12 +3919,21 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
             col1, col2 = st.columns([3, 1])
             
             with col1:
-                # Show truncated text (max 180 chars)
-                st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
-                
-                # Always show expander for full takeaway text
-                with st.expander("📖 Show full takeaway"):
-                    st.write(takeaway_text_full)
+                # Check if text was truncated
+                if is_truncated:
+                    # For long takeaways: use toggle to switch between truncated and full
+                    # Create unique key for this takeaway's toggle
+                    toggle_key = f"show_full_takeaway_{source_topic_id}_{takeaway_index}"
+                    show_full = st.toggle("📖 Show full takeaway", key=toggle_key, value=False)
+                    
+                    # Show either preview or full takeaway based on toggle
+                    if show_full:
+                        st.write(f"**{takeaway_index}.** {takeaway_text_full}")
+                    else:
+                        st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
+                else:
+                    # Show full text if not truncated
+                    st.write(f"**{takeaway_index}.** {takeaway_text_full}")
                 
                 if source_topic_id:
                     st.caption(f"From: {source_topic_label}")
