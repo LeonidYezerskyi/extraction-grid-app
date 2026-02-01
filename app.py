@@ -1100,7 +1100,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {len(ranked_receipts)}")
                     
                     # Display receipts
-                    for receipt in displayed_receipts:
+                    for receipt_idx, receipt in enumerate(displayed_receipts):
                         participant_label = receipt.get('participant_label', 'Unknown')
                         quote_full = receipt.get('quote_full', '')
                         sentiment = receipt.get('sentiment')
@@ -1113,12 +1113,18 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                             col1, col2 = st.columns([4, 1])
                             with col1:
                                 if is_long_quote:
-                                    # For long quotes: show truncated preview with expander for full quote
+                                    # For long quotes: use toggle to switch between truncated and full
                                     quote_preview = render.truncate(quote_full, 400)
-                                    st.write(f"**{participant_label}**: \"{quote_preview}\"")
-                                    # Show expander with full quote (as one continuous block)
-                                    with st.expander("📖 Show full quote"):
-                                        st.write(quote_full)
+                                    
+                                    # Create unique key for this receipt's toggle
+                                    toggle_key = f"show_full_quote_{topic_id}_{receipt_idx}_{current_page}"
+                                    show_full = st.toggle("📖 Show full quote", key=toggle_key, value=False)
+                                    
+                                    # Show either preview or full quote based on toggle
+                                    if show_full:
+                                        st.write(f"**{participant_label}**: \"{quote_full}\"")
+                                    else:
+                                        st.write(f"**{participant_label}**: \"{quote_preview}\"")
                                 else:
                                     # Short quote - show full text as one block
                                     st.write(f"**{participant_label}**: \"{quote_full}\"")
@@ -3927,7 +3933,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {len(ranked_receipts)}")
                     
                     # Display receipts
-                    for receipt in displayed_receipts:
+                    for receipt_idx, receipt in enumerate(displayed_receipts):
                         participant_label = receipt.get('participant_label', 'Unknown')
                         quote_full = receipt.get('quote_full', '')
                         sentiment = receipt.get('sentiment')
@@ -3940,12 +3946,18 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                             col1, col2 = st.columns([4, 1])
                             with col1:
                                 if is_long_quote:
-                                    # For long quotes: show truncated preview with expander for full quote
+                                    # For long quotes: use toggle to switch between truncated and full
                                     quote_preview = render.truncate(quote_full, 400)
-                                    st.write(f"**{participant_label}**: \"{quote_preview}\"")
-                                    # Show expander with full quote (as one continuous block)
-                                    with st.expander("📖 Show full quote"):
-                                        st.write(quote_full)
+                                    
+                                    # Create unique key for this receipt's toggle
+                                    toggle_key = f"show_full_quote_{topic_id}_{receipt_idx}_{current_page}"
+                                    show_full = st.toggle("📖 Show full quote", key=toggle_key, value=False)
+                                    
+                                    # Show either preview or full quote based on toggle
+                                    if show_full:
+                                        st.write(f"**{participant_label}**: \"{quote_full}\"")
+                                    else:
+                                        st.write(f"**{participant_label}**: \"{quote_preview}\"")
                                 else:
                                     # Short quote - show full text as one block
                                     st.write(f"**{participant_label}**: \"{quote_full}\"")
