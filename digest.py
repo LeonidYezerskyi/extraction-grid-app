@@ -192,7 +192,7 @@ def _transform_to_takeaway(
         index: Takeaway index (0-based) for deterministic variation when multiple strategies apply
     
     Returns:
-        Implication-style takeaway text (max 180 chars)
+        Implication-style takeaway text (may exceed 180 chars - UI will truncate for display)
     """
     if not topic_one_liner or not topic_one_liner.strip():
         # Fallback: create takeaway from topic_id
@@ -278,16 +278,8 @@ def _transform_to_takeaway(
     if takeaway.strip() == text:
         takeaway = f"Key finding: {text}"
     
-    # Enforce 180 character limit
-    if len(takeaway) > 180:
-        # Truncate at word boundary
-        truncated = takeaway[:177]
-        last_space = truncated.rfind(' ')
-        if last_space > 140:  # Only truncate at word if we keep most of the text
-            takeaway = truncated[:last_space] + '...'
-        else:
-            takeaway = truncated + '...'
-    
+    # Don't truncate here - let UI handle truncation for display
+    # This allows full text to be shown in expander
     return takeaway
 
 
@@ -305,7 +297,7 @@ def _build_takeaways(selected_topics: List[Dict[str, Any]], n_takeaways: int) ->
     Returns:
         List of takeaway dictionaries with:
         - takeaway_index: int (1-based)
-        - takeaway_text: str (implication-style, max 180 chars)
+        - takeaway_text: str (implication-style, full text - UI will truncate for display)
         - source_topic_id: str
         - evidence_count: int (from topic aggregate)
         - proof_quote_preview: str (from topic aggregate)
@@ -335,8 +327,6 @@ def _build_takeaways(selected_topics: List[Dict[str, Any]], n_takeaways: int) ->
         if takeaway_text.strip() == topic_one_liner.strip():
             # Force differentiation by adding prefix
             takeaway_text = f"Key insight: {topic_one_liner}"
-            if len(takeaway_text) > 180:
-                takeaway_text = takeaway_text[:177] + '...'
         
         takeaways.append({
             'takeaway_index': idx,
@@ -535,7 +525,7 @@ if __name__ == '__main__':
                     )
         
         def test_takeaway_text_length(self):
-            """Test that takeaway text respects 180 character limit."""
+            """Test that takeaway text is generated (length not enforced at creation, UI handles truncation)."""
             participants = [Participant('p1', 'P1', {})]
             topics = [Topic('topic1')]
             # Create a very long summary
@@ -550,8 +540,8 @@ if __name__ == '__main__':
             
             takeaway = digest['takeaways'][0]
             takeaway_text = takeaway['takeaway_text']
-            # Takeaway should be truncated to max 180 chars
-            self.assertLessEqual(len(takeaway_text), 180)
+            # Takeaway text should exist and may exceed 180 chars (UI will truncate for display)
+            self.assertGreater(len(takeaway_text), 0)
         
         def test_topic_card_structure(self):
             """Test that topic cards contain expected fields."""
