@@ -813,16 +813,33 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     
     st.sidebar.divider()
     
+    # Reset filters button
+    if st.sidebar.button("🔄 Reset Filters", use_container_width=True, help="Clear all filters and search query"):
+        # Reset all filters to default values
+        st.session_state[SESSION_KEYS['filters']] = {
+            'coverage_tier': None,
+            'tone_rollup': None,
+            'high_emotion': False,
+        }
+        st.session_state[SESSION_KEYS['search_query']] = ''
+        st.session_state['participant_filter_patterns'] = []
+        st.rerun()
+    
+    st.sidebar.divider()
+    
     # Export buttons
     st.sidebar.markdown("**Export**")
     
-    # Build digest for export
+    # Build digest for export (use filtered aggregates if available)
     selected_topic_ids = st.session_state.get(SESSION_KEYS['selected_topics'], [])
-    if canonical_model and topic_aggregates:
-        selected_aggregates = [t for t in topic_aggregates if t['topic_id'] in selected_topic_ids]
-        digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
+    if canonical_model:
+        # Use filtered aggregates if available (after filters are applied), otherwise use all topic_aggregates
+        aggregates_for_export = st.session_state.get('filtered_aggregates', topic_aggregates)
+        if aggregates_for_export:
+            selected_aggregates = [t for t in aggregates_for_export if t['topic_id'] in selected_topic_ids]
+            digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
         
-        html_content = export.export_to_html(digest_artifact)
+        html_content = export.export_to_html(digest_artifact, canonical_model)
         st.sidebar.download_button(
             label="📥 Export HTML",
             data=html_content,
@@ -831,7 +848,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             width='stretch'
         )
         
-        md_content = export.export_to_markdown(digest_artifact)
+        md_content = export.export_to_markdown(digest_artifact, canonical_model)
         st.sidebar.download_button(
             label="📄 Export Markdown",
             data=md_content,
@@ -2737,6 +2754,9 @@ def main():
         st.session_state[SESSION_KEYS['search_query']],
         canonical_model
     )
+    
+    # Store filtered aggregates in session state for export
+    st.session_state['filtered_aggregates'] = filtered_aggregates
     
     # Get selected topic aggregates
     selected_topic_ids = st.session_state[SESSION_KEYS['selected_topics']]
@@ -3648,16 +3668,33 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     
     st.sidebar.divider()
     
+    # Reset filters button
+    if st.sidebar.button("🔄 Reset Filters", use_container_width=True, help="Clear all filters and search query"):
+        # Reset all filters to default values
+        st.session_state[SESSION_KEYS['filters']] = {
+            'coverage_tier': None,
+            'tone_rollup': None,
+            'high_emotion': False,
+        }
+        st.session_state[SESSION_KEYS['search_query']] = ''
+        st.session_state['participant_filter_patterns'] = []
+        st.rerun()
+    
+    st.sidebar.divider()
+    
     # Export buttons
     st.sidebar.markdown("**Export**")
     
-    # Build digest for export
+    # Build digest for export (use filtered aggregates if available)
     selected_topic_ids = st.session_state.get(SESSION_KEYS['selected_topics'], [])
-    if canonical_model and topic_aggregates:
-        selected_aggregates = [t for t in topic_aggregates if t['topic_id'] in selected_topic_ids]
-        digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
+    if canonical_model:
+        # Use filtered aggregates if available (after filters are applied), otherwise use all topic_aggregates
+        aggregates_for_export = st.session_state.get('filtered_aggregates', topic_aggregates)
+        if aggregates_for_export:
+            selected_aggregates = [t for t in aggregates_for_export if t['topic_id'] in selected_topic_ids]
+            digest_artifact = digest.build_digest(canonical_model, selected_aggregates, n_takeaways=5)
         
-        html_content = export.export_to_html(digest_artifact)
+        html_content = export.export_to_html(digest_artifact, canonical_model)
         st.sidebar.download_button(
             label="📥 Export HTML",
             data=html_content,
@@ -3666,7 +3703,7 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
             width='stretch'
         )
         
-        md_content = export.export_to_markdown(digest_artifact)
+        md_content = export.export_to_markdown(digest_artifact, canonical_model)
         st.sidebar.download_button(
             label="📄 Export Markdown",
             data=md_content,
@@ -5572,6 +5609,9 @@ def main():
         st.session_state[SESSION_KEYS['search_query']],
         canonical_model
     )
+    
+    # Store filtered aggregates in session state for export
+    st.session_state['filtered_aggregates'] = filtered_aggregates
     
     # Get selected topic aggregates
     selected_topic_ids = st.session_state[SESSION_KEYS['selected_topics']]

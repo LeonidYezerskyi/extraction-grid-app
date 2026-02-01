@@ -51,17 +51,18 @@ def _format_coverage_for_html(coverage_rate: float) -> str:
     return render.format_coverage_bar_html(coverage_rate)
 
 
-def export_to_html(digest_artifact: Dict[str, Any]) -> str:
+def export_to_html(digest_artifact: Dict[str, Any], canonical_model=None) -> str:
     """
     Export digest artifact to self-contained HTML.
     
     Produces a complete HTML document with:
     - Takeaways section
     - Topic cards with coverage, sentiment mix, proof quotes
-    - Receipt anchors for navigation
+    - Full receipts with quotes
     
     Args:
         digest_artifact: Digest artifact from build_digest()
+        canonical_model: Optional CanonicalModel for building full receipts with quotes
     
     Returns:
         Complete self-contained HTML string with inline styles
@@ -194,12 +195,15 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
             takeaway_text = render.format_takeaway_text(takeaway.get('takeaway_text', ''))
             takeaway_index = takeaway.get('takeaway_index', 0)
             source_topic_id = takeaway.get('source_topic_id', '')
+            evidence_count = takeaway.get('evidence_count', 0)
             
             html_parts.append(f'    <div class="takeaway">\n')
             html_parts.append(f'        <span class="takeaway-index">{takeaway_index}.</span>')
             html_parts.append(f'        <span>{_escape_html(takeaway_text)}</span>')
             if source_topic_id:
                 html_parts.append(f'        <span class="topic-id"> (from {_escape_html(source_topic_id)})</span>')
+            if evidence_count > 0:
+                html_parts.append(f'        <span style="margin-left: 10px; color: #6b7280; font-size: 0.9em;">({evidence_count} supporting excerpts)</span>')
             html_parts.append(f'    </div>\n')
     
     # Topic cards section
@@ -242,17 +246,50 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
                     html_parts.append(f' <a href="#receipt-{_escape_html(proof_quote_ref)}" class="receipt-link">[View Receipt]</a>')
                 html_parts.append(f'\n        </div>\n')
             
-            # Receipt links
+            # Receipts section with full quotes
             if receipt_links:
                 html_parts.append(f'        <div class="receipt-links">\n')
-                html_parts.append(f'            <strong>Receipts:</strong> ')
-                receipt_html_links = []
-                for receipt_ref in receipt_links:
-                    receipt_html_links.append(
-                        f'<a href="#receipt-{_escape_html(receipt_ref)}" class="receipt-link" id="receipt-{_escape_html(receipt_ref)}">{_escape_html(receipt_ref)}</a>'
-                    )
-                html_parts.append(' '.join(receipt_html_links))
-                html_parts.append(f'\n        </div>\n')
+                html_parts.append(f'            <strong>Receipts ({len(receipt_links)} total):</strong>\n')
+                html_parts.append(f'        </div>\n')
+                
+                # Build full receipts if canonical_model is available
+                if canonical_model:
+                    import render
+                    receipt_displays = []
+                    for receipt_ref in receipt_links:
+                        receipt_display = render.build_receipt_display(
+                            receipt_ref, canonical_model, topic_id=topic_id
+                        )
+                        if receipt_display.get('quote_full'):
+                            receipt_displays.append(receipt_display)
+                    
+                    # Display receipts with full quotes
+                    for receipt in receipt_displays:
+                        participant_label = receipt.get('participant_label', 'Unknown')
+                        quote_full = receipt.get('quote_full', '')
+                        sentiment = receipt.get('sentiment', 'unknown')
+                        
+                        html_parts.append(f'        <div class="proof-quote" style="margin-top: 10px; margin-bottom: 10px;">\n')
+                        html_parts.append(f'            <strong>{_escape_html(participant_label)}:</strong> ')
+                        if sentiment and sentiment != 'unknown':
+                            sentiment_color = {
+                                'positive': '#10b981',
+                                'negative': '#ef4444',
+                                'neutral': '#6b7280',
+                                'mixed': '#f59e0b'
+                            }.get(sentiment, '#6b7280')
+                            html_parts.append(f'<span style="background-color: {sentiment_color}20; color: {sentiment_color}; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; margin-right: 8px;">{_escape_html(sentiment.title())}</span>')
+                        html_parts.append(f'{_escape_html(quote_full)}\n')
+                        html_parts.append(f'        </div>\n')
+                else:
+                    # Fallback: just show receipt references as links
+                    receipt_html_links = []
+                    for receipt_ref in receipt_links:
+                        receipt_html_links.append(
+                            f'<a href="#receipt-{_escape_html(receipt_ref)}" class="receipt-link" id="receipt-{_escape_html(receipt_ref)}">{_escape_html(receipt_ref)}</a>'
+                        )
+                    html_parts.append(' '.join(receipt_html_links))
+                    html_parts.append(f'\n')
             
             html_parts.append(f'    </div>\n')
     
@@ -272,7 +309,7 @@ def export_to_html(digest_artifact: Dict[str, Any]) -> str:
     return ''.join(html_parts)
 
 
-def export_to_markdown(digest_artifact: Dict[str, Any]) -> str:
+def export_to_markdown(digest_artifact: Dict[str, Any], canonical_model=None) -> str:
     """
     Export digest artifact to Markdown format.
     
@@ -280,9 +317,11 @@ def export_to_markdown(digest_artifact: Dict[str, Any]) -> str:
     - Takeaways section
     - Topic summaries with one-liners
     - Proof quotes for each topic
+    - Full receipts with quotes
     
     Args:
         digest_artifact: Digest artifact from build_digest()
+        canonical_model: Optional CanonicalModel for building full receipts with quotes
     
     Returns:
         Markdown string
@@ -309,10 +348,13 @@ def export_to_markdown(digest_artifact: Dict[str, Any]) -> str:
             takeaway_index = takeaway.get('takeaway_index', 0)
             takeaway_text = render.format_takeaway_text(takeaway.get('takeaway_text', ''))
             source_topic_id = takeaway.get('source_topic_id', '')
+            evidence_count = takeaway.get('evidence_count', 0)
             
             md_parts.append(f'{takeaway_index}. {takeaway_text}')
             if source_topic_id:
                 md_parts.append(f' _(from {source_topic_id})_')
+            if evidence_count > 0:
+                md_parts.append(f' _({evidence_count} supporting excerpts)_')
             md_parts.append('\n\n')
     
     # Topic summaries section
@@ -355,6 +397,40 @@ def export_to_markdown(digest_artifact: Dict[str, Any]) -> str:
                 if proof_quote_ref:
                     md_parts.append(f'> _Reference: {proof_quote_ref}_\n')
                 md_parts.append('\n')
+            
+            # Receipts section with full quotes
+            receipt_links = card.get('receipt_links', [])
+            if receipt_links:
+                md_parts.append(f'**Receipts ({len(receipt_links)} total):**\n\n')
+                
+                # Build full receipts if canonical_model is available
+                if canonical_model:
+                    import render
+                    receipt_displays = []
+                    for receipt_ref in receipt_links:
+                        receipt_display = render.build_receipt_display(
+                            receipt_ref, canonical_model, topic_id=topic_id
+                        )
+                        if receipt_display.get('quote_full'):
+                            receipt_displays.append(receipt_display)
+                    
+                    # Display receipts with full quotes
+                    for receipt in receipt_displays:
+                        participant_label = receipt.get('participant_label', 'Unknown')
+                        quote_full = receipt.get('quote_full', '')
+                        sentiment = receipt.get('sentiment', 'unknown')
+                        
+                        sentiment_marker = ''
+                        if sentiment and sentiment != 'unknown':
+                            sentiment_marker = f' [{sentiment.upper()}]'
+                        
+                        md_parts.append(f'- **{participant_label}**{sentiment_marker}:\n')
+                        md_parts.append(f'  > {quote_full}\n\n')
+                else:
+                    # Fallback: just show receipt references
+                    for receipt_ref in receipt_links:
+                        md_parts.append(f'- `{receipt_ref}`\n')
+                    md_parts.append('\n')
             
             md_parts.append('---\n\n')
     
