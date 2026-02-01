@@ -954,43 +954,9 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
             
             with col2:
                 if topic_card:
-                    # Always show evidence count as credibility signal
+                    # Show evidence count as credibility signal (no extra labels)
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
-                    st.caption("Supporting excerpts")
-            
-            # Optional short, non-interactive proof quote preview (no expander)
-            if topic_card:
-                proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
-                
-                # Check if this is a fallback message or invalid quote
-                is_fallback = proof_quote_preview_full == "No representative quote available"
-                is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
-                
-                # Additional validation: check if it's not just a numeric placeholder
-                if is_valid_quote:
-                    text_stripped = proof_quote_preview_full.strip()
-                    # Check if it's just a numeric index pattern
-                    numeric_patterns = [
-                        r'^\d+\.?\s*$',  # "1", "1.", "1. "
-                        r'^\d+\)\s*$',   # "1)"
-                        r'^\(\d+\)\s*$', # "(1)"
-                    ]
-                    for pattern in numeric_patterns:
-                        if re.match(pattern, text_stripped):
-                            is_valid_quote = False
-                            break
-                    # Check if it has actual words (letters)
-                    if is_valid_quote:
-                        text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
-                        if not re.search(r'[a-zA-Z]', text_no_punct):
-                            is_valid_quote = False
-                
-                # Show short inline preview (1-2 lines, ~120 chars max, no expander)
-                if is_valid_quote and proof_quote_preview_full:
-                    # Truncate to ~120 chars for inline display
-                    short_preview = render.truncate(proof_quote_preview_full, 120)
-                    st.caption(f"*\"{short_preview}\"*")
             
             st.divider()
 
@@ -3799,43 +3765,9 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
             
             with col2:
                 if topic_card:
-                    # Always show evidence count as credibility signal
+                    # Show evidence count as credibility signal (no extra labels)
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
-                    st.caption("Supporting excerpts")
-            
-            # Optional short, non-interactive proof quote preview (no expander)
-            if topic_card:
-                proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
-                
-                # Check if this is a fallback message or invalid quote
-                is_fallback = proof_quote_preview_full == "No representative quote available"
-                is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
-                
-                # Additional validation: check if it's not just a numeric placeholder
-                if is_valid_quote:
-                    text_stripped = proof_quote_preview_full.strip()
-                    # Check if it's just a numeric index pattern
-                    numeric_patterns = [
-                        r'^\d+\.?\s*$',  # "1", "1.", "1. "
-                        r'^\d+\)\s*$',   # "1)"
-                        r'^\(\d+\)\s*$', # "(1)"
-                    ]
-                    for pattern in numeric_patterns:
-                        if re.match(pattern, text_stripped):
-                            is_valid_quote = False
-                            break
-                    # Check if it has actual words (letters)
-                    if is_valid_quote:
-                        text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
-                        if not re.search(r'[a-zA-Z]', text_no_punct):
-                            is_valid_quote = False
-                
-                # Show short inline preview (1-2 lines, ~120 chars max, no expander)
-                if is_valid_quote and proof_quote_preview_full:
-                    # Truncate to ~120 chars for inline display
-                    short_preview = render.truncate(proof_quote_preview_full, 120)
-                    st.caption(f"*\"{short_preview}\"*")
             
             st.divider()
 

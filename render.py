@@ -16,9 +16,10 @@ RECEIPT_CONTAINER_MAX_HEIGHT = "400px"  # Max height for scrollable receipts con
 
 def truncate(text: Optional[str], max_chars: int) -> str:
     """
-    Truncate text to max_chars, cutting at word boundary and appending ellipsis when needed.
+    Truncate text to max_chars, cutting at sentence boundary (preferred) or word boundary.
     
     This is a pure, deterministic function that ensures exact budget enforcement.
+    Tries to cut at sentence endings (. ! ?) first, then falls back to word boundaries.
     
     Args:
         text: Text to truncate (may be None)
@@ -48,12 +49,24 @@ def truncate(text: Optional[str], max_chars: int) -> str:
     # Truncate to max_chars - 3 (for ellipsis)
     truncated = text[:max_chars - 3]
     
-    # Find last space to cut at word boundary
-    last_space = truncated.rfind(' ')
+    # Try to cut at sentence boundary first (prefer clean sentence endings)
+    sentence_endings = ['. ', '! ', '? ']
+    best_sentence_cut = -1
+    for ending in sentence_endings:
+        last_ending = truncated.rfind(ending)
+        # Prefer sentence endings that are not too close to start (at least 50% of truncated length)
+        if last_ending > 0 and last_ending > (max_chars - 3) * 0.5:
+            if best_sentence_cut == -1 or last_ending > best_sentence_cut:
+                best_sentence_cut = last_ending + len(ending.rstrip())
     
-    # If we found a space and it's not too close to the start (at least 70% of truncated length)
-    if last_space > 0 and last_space > (max_chars - 3) * 0.7:
-        truncated = truncated[:last_space]
+    if best_sentence_cut > 0:
+        truncated = truncated[:best_sentence_cut]
+    else:
+        # Fall back to word boundary
+        last_space = truncated.rfind(' ')
+        # If we found a space and it's not too close to the start (at least 70% of truncated length)
+        if last_space > 0 and last_space > (max_chars - 3) * 0.7:
+            truncated = truncated[:last_space]
     
     return truncated + '...'
 
