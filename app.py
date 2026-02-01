@@ -793,6 +793,29 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     )
     st.session_state[SESSION_KEYS['search_query']] = search_query
     
+    # Reset filters button (in Filters section)
+    if st.sidebar.button("🔄 Reset Filters", use_container_width=True, key='reset_filters_button', help="Clear all filters and search query"):
+        # Reset all filters to default values
+        st.session_state[SESSION_KEYS['filters']] = {
+            'coverage_tier': None,
+            'tone_rollup': None,
+            'high_emotion': False,
+        }
+        st.session_state[SESSION_KEYS['search_query']] = ''
+        st.session_state['participant_filter_patterns'] = []
+        # Reset widget values by clearing their keys
+        if 'coverage_tier_filter' in st.session_state:
+            del st.session_state['coverage_tier_filter']
+        if 'tone_rollup_filter' in st.session_state:
+            del st.session_state['tone_rollup_filter']
+        if 'high_emotion_filter' in st.session_state:
+            del st.session_state['high_emotion_filter']
+        if 'search_input' in st.session_state:
+            del st.session_state['search_input']
+        if 'participant_filter_input' in st.session_state:
+            del st.session_state['participant_filter_input']
+        st.rerun()
+    
     st.sidebar.divider()
     
     # Participant filter (regex denylist)
@@ -810,20 +833,6 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         st.session_state['participant_filter_patterns'] = patterns
     else:
         st.session_state['participant_filter_patterns'] = []
-    
-    st.sidebar.divider()
-    
-    # Reset filters button
-    if st.sidebar.button("🔄 Reset Filters", use_container_width=True, help="Clear all filters and search query"):
-        # Reset all filters to default values
-        st.session_state[SESSION_KEYS['filters']] = {
-            'coverage_tier': None,
-            'tone_rollup': None,
-            'high_emotion': False,
-        }
-        st.session_state[SESSION_KEYS['search_query']] = ''
-        st.session_state['participant_filter_patterns'] = []
-        st.rerun()
     
     st.sidebar.divider()
     
@@ -3648,6 +3657,29 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     )
     st.session_state[SESSION_KEYS['search_query']] = search_query
     
+    # Reset filters button (in Filters section)
+    if st.sidebar.button("🔄 Reset Filters", use_container_width=True, key='reset_filters_button', help="Clear all filters and search query"):
+        # Reset all filters to default values
+        st.session_state[SESSION_KEYS['filters']] = {
+            'coverage_tier': None,
+            'tone_rollup': None,
+            'high_emotion': False,
+        }
+        st.session_state[SESSION_KEYS['search_query']] = ''
+        st.session_state['participant_filter_patterns'] = []
+        # Reset widget values by clearing their keys
+        if 'coverage_tier_filter' in st.session_state:
+            del st.session_state['coverage_tier_filter']
+        if 'tone_rollup_filter' in st.session_state:
+            del st.session_state['tone_rollup_filter']
+        if 'high_emotion_filter' in st.session_state:
+            del st.session_state['high_emotion_filter']
+        if 'search_input' in st.session_state:
+            del st.session_state['search_input']
+        if 'participant_filter_input' in st.session_state:
+            del st.session_state['participant_filter_input']
+        st.rerun()
+    
     st.sidebar.divider()
     
     # Participant filter (regex denylist)
@@ -3665,20 +3697,6 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         st.session_state['participant_filter_patterns'] = patterns
     else:
         st.session_state['participant_filter_patterns'] = []
-    
-    st.sidebar.divider()
-    
-    # Reset filters button
-    if st.sidebar.button("🔄 Reset Filters", use_container_width=True, help="Clear all filters and search query"):
-        # Reset all filters to default values
-        st.session_state[SESSION_KEYS['filters']] = {
-            'coverage_tier': None,
-            'tone_rollup': None,
-            'high_emotion': False,
-        }
-        st.session_state[SESSION_KEYS['search_query']] = ''
-        st.session_state['participant_filter_patterns'] = []
-        st.rerun()
     
     st.sidebar.divider()
     
