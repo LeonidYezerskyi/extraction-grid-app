@@ -762,23 +762,41 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.markdown("**Filters**")
     
     # Coverage tier
-    # Get current value or default to empty string
-    coverage_tier_default = st.session_state.get('coverage_tier_filter', '')
+    # Check if key exists - if not, use index 0 (empty), otherwise use current value
+    if 'coverage_tier_filter' not in st.session_state:
+        coverage_tier_index = 0
+    else:
+        coverage_tier_value = st.session_state.get('coverage_tier_filter', '')
+        if coverage_tier_value == '':
+            coverage_tier_index = 0
+        else:
+            options = ['', 'High', 'Medium', 'Low']
+            coverage_tier_index = options.index(coverage_tier_value) if coverage_tier_value in options else 0
+    
     coverage_tier = st.sidebar.selectbox(
         "Coverage Tier",
         options=['', 'High', 'Medium', 'Low'],
-        index=0 if coverage_tier_default == '' else (['', 'High', 'Medium', 'Low'].index(coverage_tier_default) if coverage_tier_default in ['', 'High', 'Medium', 'Low'] else 0),
+        index=coverage_tier_index,
         key='coverage_tier_filter'
     )
     st.session_state[SESSION_KEYS['filters']]['coverage_tier'] = coverage_tier if coverage_tier else None
     
     # Tone rollup
-    # Get current value or default to empty string
-    tone_rollup_default = st.session_state.get('tone_rollup_filter', '')
+    # Check if key exists - if not, use index 0 (empty), otherwise use current value
+    if 'tone_rollup_filter' not in st.session_state:
+        tone_rollup_index = 0
+    else:
+        tone_rollup_value = st.session_state.get('tone_rollup_filter', '')
+        if tone_rollup_value == '':
+            tone_rollup_index = 0
+        else:
+            options = ['', 'Positive', 'Negative', 'Neutral', 'Mixed']
+            tone_rollup_index = options.index(tone_rollup_value) if tone_rollup_value in options else 0
+    
     tone_rollup = st.sidebar.selectbox(
         "Tone Roll-up",
         options=['', 'Positive', 'Negative', 'Neutral', 'Mixed'],
-        index=0 if tone_rollup_default == '' else (['', 'Positive', 'Negative', 'Neutral', 'Mixed'].index(tone_rollup_default) if tone_rollup_default in ['', 'Positive', 'Negative', 'Neutral', 'Mixed'] else 0),
+        index=tone_rollup_index,
         key='tone_rollup_filter'
     )
     st.session_state[SESSION_KEYS['filters']]['tone_rollup'] = tone_rollup.lower() if tone_rollup else None
@@ -3652,23 +3670,41 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     st.sidebar.markdown("**Filters**")
     
     # Coverage tier
-    # Get current value or default to empty string
-    coverage_tier_default = st.session_state.get('coverage_tier_filter', '')
+    # Check if key exists - if not, use index 0 (empty), otherwise use current value
+    if 'coverage_tier_filter' not in st.session_state:
+        coverage_tier_index = 0
+    else:
+        coverage_tier_value = st.session_state.get('coverage_tier_filter', '')
+        if coverage_tier_value == '':
+            coverage_tier_index = 0
+        else:
+            options = ['', 'High', 'Medium', 'Low']
+            coverage_tier_index = options.index(coverage_tier_value) if coverage_tier_value in options else 0
+    
     coverage_tier = st.sidebar.selectbox(
         "Coverage Tier",
         options=['', 'High', 'Medium', 'Low'],
-        index=0 if coverage_tier_default == '' else (['', 'High', 'Medium', 'Low'].index(coverage_tier_default) if coverage_tier_default in ['', 'High', 'Medium', 'Low'] else 0),
+        index=coverage_tier_index,
         key='coverage_tier_filter'
     )
     st.session_state[SESSION_KEYS['filters']]['coverage_tier'] = coverage_tier if coverage_tier else None
     
     # Tone rollup
-    # Get current value or default to empty string
-    tone_rollup_default = st.session_state.get('tone_rollup_filter', '')
+    # Check if key exists - if not, use index 0 (empty), otherwise use current value
+    if 'tone_rollup_filter' not in st.session_state:
+        tone_rollup_index = 0
+    else:
+        tone_rollup_value = st.session_state.get('tone_rollup_filter', '')
+        if tone_rollup_value == '':
+            tone_rollup_index = 0
+        else:
+            options = ['', 'Positive', 'Negative', 'Neutral', 'Mixed']
+            tone_rollup_index = options.index(tone_rollup_value) if tone_rollup_value in options else 0
+    
     tone_rollup = st.sidebar.selectbox(
         "Tone Roll-up",
         options=['', 'Positive', 'Negative', 'Neutral', 'Mixed'],
-        index=0 if tone_rollup_default == '' else (['', 'Positive', 'Negative', 'Neutral', 'Mixed'].index(tone_rollup_default) if tone_rollup_default in ['', 'Positive', 'Negative', 'Neutral', 'Mixed'] else 0),
+        index=tone_rollup_index,
         key='tone_rollup_filter'
     )
     st.session_state[SESSION_KEYS['filters']]['tone_rollup'] = tone_rollup.lower() if tone_rollup else None
