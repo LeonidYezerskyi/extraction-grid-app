@@ -192,7 +192,8 @@ def export_to_html(digest_artifact: Dict[str, Any], canonical_model=None) -> str
     if takeaways:
         html_parts.append('    <h2>Key Takeaways</h2>\n')
         for takeaway in takeaways:
-            takeaway_text = render.format_takeaway_text(takeaway.get('takeaway_text', ''))
+            # Use full takeaway text (not truncated) for export
+            takeaway_text = takeaway.get('takeaway_text', '') or ''
             takeaway_index = takeaway.get('takeaway_index', 0)
             source_topic_id = takeaway.get('source_topic_id', '')
             evidence_count = takeaway.get('evidence_count', 0)
@@ -215,7 +216,8 @@ def export_to_html(digest_artifact: Dict[str, Any], canonical_model=None) -> str
             coverage_rate = card.get('coverage_rate', 0.0)
             evidence_count = card.get('evidence_count', 0)
             sentiment_mix = card.get('sentiment_mix', {})
-            proof_quote_preview = render.format_quote_preview(card.get('proof_quote_preview', ''))
+            # Use full proof quote text (not truncated) for export
+            proof_quote_preview = card.get('proof_quote_preview', '') or ''
             proof_quote_ref = card.get('proof_quote_ref', '')
             receipt_links = card.get('receipt_links', [])
             
@@ -238,7 +240,7 @@ def export_to_html(digest_artifact: Dict[str, Any], canonical_model=None) -> str
             html_parts.append(f'            <strong>Sentiment:</strong> {_format_sentiment_mix_for_html(sentiment_mix)}\n')
             html_parts.append(f'        </div>\n')
             
-            # Proof quote
+            # Proof quote - use full text (not truncated) for export
             if proof_quote_preview:
                 html_parts.append(f'        <div class="proof-quote">\n')
                 html_parts.append(f'            <strong>Proof Quote:</strong> {_escape_html(proof_quote_preview)}')
@@ -345,7 +347,8 @@ def export_to_markdown(digest_artifact: Dict[str, Any], canonical_model=None) ->
         md_parts.append('## Key Takeaways\n\n')
         for takeaway in takeaways:
             takeaway_index = takeaway.get('takeaway_index', 0)
-            takeaway_text = render.format_takeaway_text(takeaway.get('takeaway_text', ''))
+            # Use full takeaway text (not truncated) for export
+            takeaway_text = takeaway.get('takeaway_text', '') or ''
             source_topic_id = takeaway.get('source_topic_id', '')
             evidence_count = takeaway.get('evidence_count', 0)
             
@@ -365,7 +368,8 @@ def export_to_markdown(digest_artifact: Dict[str, Any], canonical_model=None) ->
             coverage_rate = card.get('coverage_rate', 0.0)
             evidence_count = card.get('evidence_count', 0)
             sentiment_mix = card.get('sentiment_mix', {})
-            proof_quote_preview = render.format_quote_preview(card.get('proof_quote_preview', ''))
+            # Use full proof quote text (not truncated) for export
+            proof_quote_preview = card.get('proof_quote_preview', '') or ''
             proof_quote_ref = card.get('proof_quote_ref', '')
             
             # Topic header
