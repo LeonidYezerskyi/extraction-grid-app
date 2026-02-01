@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Any, Tuple
 
 
 # Truncation budgets
-TAKEAWAY_MAX = 180
+TAKEAWAY_MAX = 350
 TOPIC_ONELINER_MAX = 240
 QUOTE_PREVIEW_MAX = 320
 
@@ -636,7 +636,7 @@ if __name__ == '__main__':
         
         def test_takeaway_max_constant(self):
             """Test TAKEAWAY_MAX constant."""
-            self.assertEqual(TAKEAWAY_MAX, 180)
+            self.assertEqual(TAKEAWAY_MAX, 350)
         
         def test_topic_oneliner_max_constant(self):
             """Test TOPIC_ONELINER_MAX constant."""
