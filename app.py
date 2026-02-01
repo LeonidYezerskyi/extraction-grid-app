@@ -1092,23 +1092,24 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                             </style>
                             """, unsafe_allow_html=True)
                             
-                            # First row: buttons side by side, each taking 50% width
-                            col1, col2 = st.columns(2)
+                            # Single row: Previous button | Page number | Next button
+                            col1, col2, col3 = st.columns([1, 1, 1])
                             
                             with col1:
-                                # Previous button (full width of column)
+                                # Previous button
                                 if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
                                     st.session_state[receipt_page_key] = max(0, current_page - 1)
                                     st.rerun()
                             
                             with col2:
-                                # Next button (full width of column)
+                                # Page number centered
+                                st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                            
+                            with col3:
+                                # Next button
                                 if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
                                     st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
                                     st.rerun()
-                            
-                            # Second row: page number centered below buttons
-                            st.markdown(f"<div style='text-align: center; padding-top: 8px; padding-bottom: 4px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
                 else:
                     st.caption("No receipts available")
             
@@ -4005,23 +4006,24 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                             </style>
                             """, unsafe_allow_html=True)
                             
-                            # First row: buttons side by side, each taking 50% width
-                            col1, col2 = st.columns(2)
+                            # Single row: Previous button | Page number | Next button
+                            col1, col2, col3 = st.columns([1, 1, 1])
                             
                             with col1:
-                                # Previous button (full width of column)
+                                # Previous button
                                 if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
                                     st.session_state[receipt_page_key] = max(0, current_page - 1)
                                     st.rerun()
                             
                             with col2:
-                                # Next button (full width of column)
+                                # Page number centered
+                                st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                            
+                            with col3:
+                                # Next button
                                 if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
                                     st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
                                     st.rerun()
-                            
-                            # Second row: page number centered below buttons
-                            st.markdown(f"<div style='text-align: center; padding-top: 8px; padding-bottom: 4px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
                 else:
                     st.caption("No receipts available")
             
