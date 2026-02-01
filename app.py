@@ -1585,8 +1585,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             color: #1f2937 !important;
         }
         
-        /* Alternative selector for header row */
-        [data-testid="stHorizontalBlock"]:has([data-testid="column"]:has-text("Topic")):has([data-testid="column"]:has-text("Importance")) {
+        /* Alternative selector for header row - match 6 columns with Topic, Importance, Coverage, Mentions, Sentiment, Confidence Signals */
+        [data-testid="stHorizontalBlock"]:has([data-testid="column"]:has-text("Topic")):has([data-testid="column"]:has-text("Importance")):has([data-testid="column"]:has-text("Coverage")):has([data-testid="column"]:has-text("Mentions")):has([data-testid="column"]:has-text("Sentiment")):has([data-testid="column"]:has-text("Confidence Signals")) {
             position: sticky !important;
             top: 0 !important;
             z-index: 100 !important;
@@ -1802,7 +1802,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                 let hasCoverage = false;
                 let hasMentions = false;
                 let hasSentiment = false;
-                let hasSummary = false;
+                let hasConfidenceSignals = false;
                 
                 for (let col of columns) {
                     const text = (col.textContent || col.innerText || '').trim().toLowerCase();
@@ -1810,16 +1810,21 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                     if (text.includes('importance')) hasImportance = true;
                     if (text.includes('coverage')) hasCoverage = true;
                     if (text.includes('mentions')) hasMentions = true;
-                    if (text.includes('sentiment')) hasSentiment = true;
-                    if (text.includes('summary')) hasSummary = true;
+                    if (text.includes('sentiment') && !text.includes('distribution')) hasSentiment = true;
+                    if (text.includes('confidence signals') || text.includes('🔍')) hasConfidenceSignals = true;
                 }
                 
-                // If it has all header columns, make it sticky
-                if (hasTopic && hasImportance && hasCoverage && hasMentions && hasSentiment && hasSummary) {
+                // If it has all header columns (6 columns: Topic, Importance, Coverage, Mentions, Sentiment, Confidence Signals), make it sticky
+                if (hasTopic && hasImportance && hasCoverage && hasMentions && hasSentiment && hasConfidenceSignals) {
                     block.classList.add('explore-table-header');
+                    block.style.position = 'sticky';
+                    block.style.top = '0';
+                    block.style.zIndex = '100';
+                    block.style.backgroundColor = 'white';
                     // Also ensure all child columns have white background
                     columns.forEach(col => {
                         col.style.backgroundColor = 'white';
+                        col.style.position = 'relative';
                     });
                     break; // Found the header, stop searching
                 }
@@ -4528,8 +4533,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             color: #1f2937 !important;
         }
         
-        /* Alternative selector for header row */
-        [data-testid="stHorizontalBlock"]:has([data-testid="column"]:has-text("Topic")):has([data-testid="column"]:has-text("Importance")) {
+        /* Alternative selector for header row - match 6 columns with Topic, Importance, Coverage, Mentions, Sentiment, Confidence Signals */
+        [data-testid="stHorizontalBlock"]:has([data-testid="column"]:has-text("Topic")):has([data-testid="column"]:has-text("Importance")):has([data-testid="column"]:has-text("Coverage")):has([data-testid="column"]:has-text("Mentions")):has([data-testid="column"]:has-text("Sentiment")):has([data-testid="column"]:has-text("Confidence Signals")) {
             position: sticky !important;
             top: 0 !important;
             z-index: 100 !important;
@@ -4745,7 +4750,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                 let hasCoverage = false;
                 let hasMentions = false;
                 let hasSentiment = false;
-                let hasSummary = false;
+                let hasConfidenceSignals = false;
                 
                 for (let col of columns) {
                     const text = (col.textContent || col.innerText || '').trim().toLowerCase();
@@ -4753,16 +4758,21 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                     if (text.includes('importance')) hasImportance = true;
                     if (text.includes('coverage')) hasCoverage = true;
                     if (text.includes('mentions')) hasMentions = true;
-                    if (text.includes('sentiment')) hasSentiment = true;
-                    if (text.includes('summary')) hasSummary = true;
+                    if (text.includes('sentiment') && !text.includes('distribution')) hasSentiment = true;
+                    if (text.includes('confidence signals') || text.includes('🔍')) hasConfidenceSignals = true;
                 }
                 
-                // If it has all header columns, make it sticky
-                if (hasTopic && hasImportance && hasCoverage && hasMentions && hasSentiment && hasSummary) {
+                // If it has all header columns (6 columns: Topic, Importance, Coverage, Mentions, Sentiment, Confidence Signals), make it sticky
+                if (hasTopic && hasImportance && hasCoverage && hasMentions && hasSentiment && hasConfidenceSignals) {
                     block.classList.add('explore-table-header');
+                    block.style.position = 'sticky';
+                    block.style.top = '0';
+                    block.style.zIndex = '100';
+                    block.style.backgroundColor = 'white';
                     // Also ensure all child columns have white background
                     columns.forEach(col => {
                         col.style.backgroundColor = 'white';
+                        col.style.position = 'relative';
                     });
                     break; // Found the header, stop searching
                 }
