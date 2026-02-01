@@ -803,17 +803,12 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         }
         st.session_state[SESSION_KEYS['search_query']] = ''
         st.session_state['participant_filter_patterns'] = []
-        # Reset widget values by clearing their keys
-        if 'coverage_tier_filter' in st.session_state:
-            del st.session_state['coverage_tier_filter']
-        if 'tone_rollup_filter' in st.session_state:
-            del st.session_state['tone_rollup_filter']
-        if 'high_emotion_filter' in st.session_state:
-            del st.session_state['high_emotion_filter']
-        if 'search_input' in st.session_state:
-            del st.session_state['search_input']
-        if 'participant_filter_input' in st.session_state:
-            del st.session_state['participant_filter_input']
+        # Reset widget values by setting them to empty string
+        st.session_state['coverage_tier_filter'] = ''
+        st.session_state['tone_rollup_filter'] = ''
+        st.session_state['high_emotion_filter'] = False
+        st.session_state['search_input'] = ''
+        st.session_state['participant_filter_input'] = ''
         st.rerun()
     
     st.sidebar.divider()
@@ -3667,17 +3662,12 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
         }
         st.session_state[SESSION_KEYS['search_query']] = ''
         st.session_state['participant_filter_patterns'] = []
-        # Reset widget values by clearing their keys
-        if 'coverage_tier_filter' in st.session_state:
-            del st.session_state['coverage_tier_filter']
-        if 'tone_rollup_filter' in st.session_state:
-            del st.session_state['tone_rollup_filter']
-        if 'high_emotion_filter' in st.session_state:
-            del st.session_state['high_emotion_filter']
-        if 'search_input' in st.session_state:
-            del st.session_state['search_input']
-        if 'participant_filter_input' in st.session_state:
-            del st.session_state['participant_filter_input']
+        # Reset widget values by setting them to empty string
+        st.session_state['coverage_tier_filter'] = ''
+        st.session_state['tone_rollup_filter'] = ''
+        st.session_state['high_emotion_filter'] = False
+        st.session_state['search_input'] = ''
+        st.session_state['participant_filter_input'] = ''
         st.rerun()
     
     st.sidebar.divider()
