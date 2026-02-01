@@ -1532,7 +1532,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
         st.session_state['explore_page'] = 1
     
     # Summary truncation length
-    SUMMARY_TRUNCATE_LENGTH = 100
+    SUMMARY_TRUNCATE_LENGTH = 350
     
     # Add CSS for frozen first column effect, sticky header, and full-width expander
     st.markdown("""
@@ -4476,7 +4476,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
         st.session_state['explore_page'] = 1
     
     # Summary truncation length
-    SUMMARY_TRUNCATE_LENGTH = 100
+    SUMMARY_TRUNCATE_LENGTH = 350
     
     # Add CSS for frozen first column effect, sticky header, and full-width expander
     st.markdown("""
