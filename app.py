@@ -944,10 +944,9 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                 # Show truncated text (max 180 chars)
                 st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
                 
-                # Show full text in expander if truncated
-                if is_truncated:
-                    with st.expander("📖 Show full takeaway"):
-                        st.write(takeaway_text_full)
+                # Always show expander for full takeaway text
+                with st.expander("📖 Show full takeaway"):
+                    st.write(takeaway_text_full)
                 
                 if source_topic_id:
                     st.caption(f"From: {source_topic_label}")
@@ -1049,6 +1048,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                 
                 # Truncate to ~150 chars for 2-3 lines preview
                 proof_preview_short = render.truncate(proof_quote_preview_full, 150)
+                is_quote_truncated = len(proof_quote_preview_full) > 150
                 
                 # Display static preview with sentiment chip
                 col1, col2 = st.columns([4, 1])
@@ -1057,6 +1057,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                 with col2:
                     if proof_quote_sentiment:
                         st.markdown(render.format_sentiment_chip(proof_quote_sentiment), unsafe_allow_html=True)
+                
+                # Always show expander for full proof quote
+                with st.expander("💬 Proof Quote"):
+                    st.write(proof_quote_preview_full)
             
             # Receipts expander with pagination
             if receipt_links:
@@ -3755,10 +3759,9 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                 # Show truncated text (max 180 chars)
                 st.write(f"**{takeaway_index}.** {takeaway_text_truncated}")
                 
-                # Show full text in expander if truncated
-                if is_truncated:
-                    with st.expander("📖 Show full takeaway"):
-                        st.write(takeaway_text_full)
+                # Always show expander for full takeaway text
+                with st.expander("📖 Show full takeaway"):
+                    st.write(takeaway_text_full)
                 
                 if source_topic_id:
                     st.caption(f"From: {source_topic_label}")
@@ -3860,6 +3863,7 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                 
                 # Truncate to ~150 chars for 2-3 lines preview
                 proof_preview_short = render.truncate(proof_quote_preview_full, 150)
+                is_quote_truncated = len(proof_quote_preview_full) > 150
                 
                 # Display static preview with sentiment chip
                 col1, col2 = st.columns([4, 1])
@@ -3868,6 +3872,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                 with col2:
                     if proof_quote_sentiment:
                         st.markdown(render.format_sentiment_chip(proof_quote_sentiment), unsafe_allow_html=True)
+                
+                # Always show expander for full proof quote
+                with st.expander("💬 Proof Quote"):
+                    st.write(proof_quote_preview_full)
             
             # Receipts expander with pagination
             if receipt_links:
