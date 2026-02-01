@@ -869,6 +869,8 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     # Build digest for export
     # IMPORTANT: Apply filters here to ensure export uses current filter state
     selected_topic_ids = st.session_state.get(SESSION_KEYS['selected_topics'], [])
+    digest_artifact = None
+    
     if canonical_model and topic_aggregates:
         # Apply filters to get current filtered aggregates
         filtered_aggregates_for_export = filter_topics(
@@ -905,6 +907,21 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
                 'total_evidence_cells': 0
             }
         }
+    
+    # Export buttons (always show if canonical_model exists, even if digest is empty)
+    if canonical_model:
+        # Ensure digest_artifact is defined
+        if not digest_artifact:
+            digest_artifact = {
+                'takeaways': [],
+                'topic_cards': [],
+                'metadata': {
+                    'n_takeaways': 0,
+                    'n_topics': 0,
+                    'total_participants': len(canonical_model.participants) if canonical_model else 0,
+                    'total_evidence_cells': len(canonical_model.evidence_cells) if canonical_model else 0
+                }
+            }
         
         html_content = export.export_to_html(digest_artifact, canonical_model)
         st.sidebar.download_button(
@@ -3791,6 +3808,8 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
     # Build digest for export
     # IMPORTANT: Apply filters here to ensure export uses current filter state
     selected_topic_ids = st.session_state.get(SESSION_KEYS['selected_topics'], [])
+    digest_artifact = None
+    
     if canonical_model and topic_aggregates:
         # Apply filters to get current filtered aggregates
         filtered_aggregates_for_export = filter_topics(
@@ -3827,6 +3846,21 @@ def render_sidebar(canonical_model, topic_aggregates: List[Dict[str, Any]]):
                 'total_evidence_cells': 0
             }
         }
+    
+    # Export buttons (always show if canonical_model exists, even if digest is empty)
+    if canonical_model:
+        # Ensure digest_artifact is defined
+        if not digest_artifact:
+            digest_artifact = {
+                'takeaways': [],
+                'topic_cards': [],
+                'metadata': {
+                    'n_takeaways': 0,
+                    'n_topics': 0,
+                    'total_participants': len(canonical_model.participants) if canonical_model else 0,
+                    'total_evidence_cells': len(canonical_model.evidence_cells) if canonical_model else 0
+                }
+            }
         
         html_content = export.export_to_html(digest_artifact, canonical_model)
         st.sidebar.download_button(
