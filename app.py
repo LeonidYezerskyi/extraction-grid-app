@@ -954,14 +954,13 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
             
             with col2:
                 if topic_card:
-                    # Always show evidence count
+                    # Always show evidence count as credibility signal
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
-                    st.caption("Number of source excerpts supporting this insight")
+                    st.caption("Supporting excerpts")
             
-            # Proof Quote and Show Receipts expanders on full width below
+            # Optional short, non-interactive proof quote preview (no expander)
             if topic_card:
-                # Proof quote preview (truncated to 320 chars)
                 proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
                 
                 # Check if this is a fallback message or invalid quote
@@ -987,131 +986,11 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                         if not re.search(r'[a-zA-Z]', text_no_punct):
                             is_valid_quote = False
                 
-                if is_fallback or not is_valid_quote:
-                    # Show fallback message
-                    with st.expander("💬 Proof Quote"):
-                        st.caption("A representative quote that illustrates this insight.")
-                        st.info("No representative quote available")
-                elif proof_quote_preview_full:
-                    with st.expander("💬 Proof Quote"):
-                        st.caption("A representative quote that illustrates this insight.")
-                        # Show full quote only
-                        st.write(proof_quote_preview_full)
-                
-                # Always show receipts expander
-                receipt_links = topic_card.get('receipt_links', [])
-                if receipt_links:
-                    total_receipts = len(receipt_links)
-                    with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
-                        st.caption("**Receipts** are source excerpts (quotes from participants) that support this insight.")
-                        st.caption("Source excerpts supporting this insight (ranked by relevance):")
-                        
-                        # Convert receipt references to human-readable display objects
-                        receipt_displays = []
-                        for receipt_ref in receipt_links:
-                            receipt_display = render.build_receipt_display(
-                                receipt_ref, canonical_model, topic_id=source_topic_id
-                            )
-                            receipt_displays.append(receipt_display)
-                        
-                        # Create session state key for this topic's receipt page
-                        receipt_page_key = f'receipts_page_takeaway_{source_topic_id}'
-                        if receipt_page_key not in st.session_state:
-                            st.session_state[receipt_page_key] = 0  # Start at page 0
-                        
-                        current_page = st.session_state[receipt_page_key]
-                        page_size = render.RECEIPT_PAGE_SIZE
-                        
-                        # Rank all receipts first (for consistent ordering)
-                        all_ranked_receipts, total_count = render.rank_and_limit_receipts(
-                            receipt_displays,
-                            max_display=len(receipt_displays),  # Rank all, don't limit yet
-                            prioritize_diversity=True
-                        )
-                        
-                        # Calculate pagination
-                        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-                        start_idx = current_page * page_size
-                        end_idx = min(start_idx + page_size, total_count)
-                        
-                        # Get receipts for current page
-                        displayed_receipts = all_ranked_receipts[start_idx:end_idx]
-                        
-                        # Show progress indicator
-                        st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
-                        
-                        # Group by participant label
-                        participant_groups = {}
-                        for receipt in displayed_receipts:
-                            participant_label = receipt['participant_label']
-                            if participant_label not in participant_groups:
-                                participant_groups[participant_label] = []
-                            participant_groups[participant_label].append(receipt)
-                        
-                        # Display receipts grouped by participant
-                        for participant_label, receipts in participant_groups.items():
-                            st.markdown(f"**{participant_label}**")
-                            
-                            for receipt in receipts:
-                                with st.container():
-                                    # Show quote excerpt
-                                    excerpt = receipt.get('quote_excerpt', '')
-                                    quote_full = receipt.get('quote_full', '')
-                                    
-                                    if excerpt and excerpt != 'No quote text available':
-                                        # Show truncated excerpt
-                                        st.write(f"*\"{excerpt}\"*")
-                                        
-                                        # Show expander for full quote if it's truncated or longer
-                                        is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
-                                        if quote_full and is_truncated:
-                                            with st.expander("📖 Show full quote"):
-                                                st.write(quote_full)
-                                    else:
-                                        st.caption("(Quote text not available)")
-                                    
-                                    # Show source context if available
-                                    if receipt.get('source_context'):
-                                        st.caption(f"Source: {receipt['source_context']}")
-                                    
-                                    st.markdown("---")
-                        
-                        # Pagination controls (horizontal layout for Key Takeaways)
-                        if total_pages > 1:
-                            # Add CSS to prevent text wrapping in pagination buttons
-                            st.markdown("""
-                            <style>
-                            button[data-testid*="receipts_prev_takeaway"],
-                            button[data-testid*="receipts_next_takeaway"] {
-                                white-space: nowrap !important;
-                            }
-                            button[data-testid*="receipts_prev_takeaway"] > div,
-                            button[data-testid*="receipts_next_takeaway"] > div {
-                                white-space: nowrap !important;
-                            }
-                            </style>
-                            """, unsafe_allow_html=True)
-                            
-                            # Single row: Previous button | Page number | Next button
-                            col1, col2, col3 = st.columns([1, 1, 1])
-                            
-                            with col1:
-                                # Previous button
-                                if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
-                                    st.session_state[receipt_page_key] = max(0, current_page - 1)
-                                    st.rerun()
-                            
-                            with col2:
-                                # Page number centered
-                                st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
-                            
-                            with col3:
-                                # Next button
-                                if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
-                                    st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
-                                    st.rerun()
-                else:
-                    st.caption("No receipts available")
+                # Show short inline preview (1-2 lines, ~120 chars max, no expander)
+                if is_valid_quote and proof_quote_preview_full:
+                    # Truncate to ~120 chars for inline display
+                    short_preview = render.truncate(proof_quote_preview_full, 120)
+                    st.caption(f"*\"{short_preview}\"*")
             
             st.divider()
 
@@ -3868,14 +3747,13 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
             
             with col2:
                 if topic_card:
-                    # Always show evidence count
+                    # Always show evidence count as credibility signal
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
-                    st.caption("Number of source excerpts supporting this insight")
+                    st.caption("Supporting excerpts")
             
-            # Proof Quote and Show Receipts expanders on full width below
+            # Optional short, non-interactive proof quote preview (no expander)
             if topic_card:
-                # Proof quote preview (truncated to 320 chars)
                 proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
                 
                 # Check if this is a fallback message or invalid quote
@@ -3901,131 +3779,11 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                         if not re.search(r'[a-zA-Z]', text_no_punct):
                             is_valid_quote = False
                 
-                if is_fallback or not is_valid_quote:
-                    # Show fallback message
-                    with st.expander("💬 Proof Quote"):
-                        st.caption("A representative quote that illustrates this insight.")
-                        st.info("No representative quote available")
-                elif proof_quote_preview_full:
-                    with st.expander("💬 Proof Quote"):
-                        st.caption("A representative quote that illustrates this insight.")
-                        # Show full quote only
-                        st.write(proof_quote_preview_full)
-                
-                # Always show receipts expander
-                receipt_links = topic_card.get('receipt_links', [])
-                if receipt_links:
-                    total_receipts = len(receipt_links)
-                    with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
-                        st.caption("**Receipts** are source excerpts (quotes from participants) that support this insight.")
-                        st.caption("Source excerpts supporting this insight (ranked by relevance):")
-                        
-                        # Convert receipt references to human-readable display objects
-                        receipt_displays = []
-                        for receipt_ref in receipt_links:
-                            receipt_display = render.build_receipt_display(
-                                receipt_ref, canonical_model, topic_id=source_topic_id
-                            )
-                            receipt_displays.append(receipt_display)
-                        
-                        # Create session state key for this topic's receipt page
-                        receipt_page_key = f'receipts_page_takeaway_{source_topic_id}'
-                        if receipt_page_key not in st.session_state:
-                            st.session_state[receipt_page_key] = 0  # Start at page 0
-                        
-                        current_page = st.session_state[receipt_page_key]
-                        page_size = render.RECEIPT_PAGE_SIZE
-                        
-                        # Rank all receipts first (for consistent ordering)
-                        all_ranked_receipts, total_count = render.rank_and_limit_receipts(
-                            receipt_displays,
-                            max_display=len(receipt_displays),  # Rank all, don't limit yet
-                            prioritize_diversity=True
-                        )
-                        
-                        # Calculate pagination
-                        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 1
-                        start_idx = current_page * page_size
-                        end_idx = min(start_idx + page_size, total_count)
-                        
-                        # Get receipts for current page
-                        displayed_receipts = all_ranked_receipts[start_idx:end_idx]
-                        
-                        # Show progress indicator
-                        st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {total_count}")
-                        
-                        # Group by participant label
-                        participant_groups = {}
-                        for receipt in displayed_receipts:
-                            participant_label = receipt['participant_label']
-                            if participant_label not in participant_groups:
-                                participant_groups[participant_label] = []
-                            participant_groups[participant_label].append(receipt)
-                        
-                        # Display receipts grouped by participant
-                        for participant_label, receipts in participant_groups.items():
-                            st.markdown(f"**{participant_label}**")
-                            
-                            for receipt in receipts:
-                                with st.container():
-                                    # Show quote excerpt
-                                    excerpt = receipt.get('quote_excerpt', '')
-                                    quote_full = receipt.get('quote_full', '')
-                                    
-                                    if excerpt and excerpt != 'No quote text available':
-                                        # Show truncated excerpt
-                                        st.write(f"*\"{excerpt}\"*")
-                                        
-                                        # Show expander for full quote if it's truncated or longer
-                                        is_truncated = excerpt.endswith('...') or (quote_full and len(quote_full) > len(excerpt.strip()) + 10)
-                                        if quote_full and is_truncated:
-                                            with st.expander("📖 Show full quote"):
-                                                st.write(quote_full)
-                                    else:
-                                        st.caption("(Quote text not available)")
-                                    
-                                    # Show source context if available
-                                    if receipt.get('source_context'):
-                                        st.caption(f"Source: {receipt['source_context']}")
-                                    
-                                    st.markdown("---")
-                        
-                        # Pagination controls (horizontal layout for Key Takeaways)
-                        if total_pages > 1:
-                            # Add CSS to prevent text wrapping in pagination buttons
-                            st.markdown("""
-                            <style>
-                            button[data-testid*="receipts_prev_takeaway"],
-                            button[data-testid*="receipts_next_takeaway"] {
-                                white-space: nowrap !important;
-                            }
-                            button[data-testid*="receipts_prev_takeaway"] > div,
-                            button[data-testid*="receipts_next_takeaway"] > div {
-                                white-space: nowrap !important;
-                            }
-                            </style>
-                            """, unsafe_allow_html=True)
-                            
-                            # Single row: Previous button | Page number | Next button
-                            col1, col2, col3 = st.columns([1, 1, 1])
-                            
-                            with col1:
-                                # Previous button
-                                if st.button("◀ Previous", key=f"receipts_prev_takeaway_{source_topic_id}", disabled=(current_page == 0), use_container_width=True):
-                                    st.session_state[receipt_page_key] = max(0, current_page - 1)
-                                    st.rerun()
-                            
-                            with col2:
-                                # Page number centered
-                                st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
-                            
-                            with col3:
-                                # Next button
-                                if st.button("Next ▶", key=f"receipts_next_takeaway_{source_topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
-                                    st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
-                                    st.rerun()
-                else:
-                    st.caption("No receipts available")
+                # Show short inline preview (1-2 lines, ~120 chars max, no expander)
+                if is_valid_quote and proof_quote_preview_full:
+                    # Truncate to ~120 chars for inline display
+                    short_preview = render.truncate(proof_quote_preview_full, 120)
+                    st.caption(f"*\"{short_preview}\"*")
             
             st.divider()
 
