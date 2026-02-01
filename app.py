@@ -1868,15 +1868,14 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             # Topic label (frozen column effect via styling)
             # topic_label is already capitalized in explore_model.from_topic_aggregate
             st.markdown(f"**{topic.topic_label}**")
-            st.caption(topic.topic_id)
+            # Show signal bucket as indicator under topic name
+            bucket = topic.get_signal_bucket()
+            st.caption(f"Signal: {bucket}")
         
         with row_cols[1]:
             # Importance score with rank
             importance_text = _format_importance_with_rank(topic.importance_score, rank)
             st.markdown(importance_text)
-            # Show signal bucket as subtle indicator
-            bucket = topic.get_signal_bucket()
-            st.caption(f"Signal: {bucket}")
         
         with row_cols[2]:
             # Coverage as progress bar
@@ -4812,15 +4811,14 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             # Topic label (frozen column effect via styling)
             # topic_label is already capitalized in explore_model.from_topic_aggregate
             st.markdown(f"**{topic.topic_label}**")
-            st.caption(topic.topic_id)
+            # Show signal bucket as indicator under topic name
+            bucket = topic.get_signal_bucket()
+            st.caption(f"Signal: {bucket}")
         
         with row_cols[1]:
             # Importance score with rank
             importance_text = _format_importance_with_rank(topic.importance_score, rank)
             st.markdown(importance_text)
-            # Show signal bucket as subtle indicator
-            bucket = topic.get_signal_bucket()
-            st.caption(f"Signal: {bucket}")
         
         with row_cols[2]:
             # Coverage as progress bar
