@@ -958,79 +958,51 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
                     st.caption("Number of source excerpts supporting this insight")
-                    
-                    # Proof quote preview (truncated to 320 chars)
-                    proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
-                    
-                    # Check if this is a fallback message or invalid quote
-                    is_fallback = proof_quote_preview_full == "No representative quote available"
-                    is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
-                    
-                    # Additional validation: check if it's not just a numeric placeholder
+            
+            # Proof Quote and Show Receipts expanders on full width below
+            if topic_card:
+                # Proof quote preview (truncated to 320 chars)
+                proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
+                
+                # Check if this is a fallback message or invalid quote
+                is_fallback = proof_quote_preview_full == "No representative quote available"
+                is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
+                
+                # Additional validation: check if it's not just a numeric placeholder
+                if is_valid_quote:
+                    text_stripped = proof_quote_preview_full.strip()
+                    # Check if it's just a numeric index pattern
+                    numeric_patterns = [
+                        r'^\d+\.?\s*$',  # "1", "1.", "1. "
+                        r'^\d+\)\s*$',   # "1)"
+                        r'^\(\d+\)\s*$', # "(1)"
+                    ]
+                    for pattern in numeric_patterns:
+                        if re.match(pattern, text_stripped):
+                            is_valid_quote = False
+                            break
+                    # Check if it has actual words (letters)
                     if is_valid_quote:
-                        text_stripped = proof_quote_preview_full.strip()
-                        # Check if it's just a numeric index pattern
-                        numeric_patterns = [
-                            r'^\d+\.?\s*$',  # "1", "1.", "1. "
-                            r'^\d+\)\s*$',   # "1)"
-                            r'^\(\d+\)\s*$', # "(1)"
-                        ]
-                        for pattern in numeric_patterns:
-                            if re.match(pattern, text_stripped):
-                                is_valid_quote = False
-                                break
-                        # Check if it has actual words (letters)
-                        if is_valid_quote:
-                            text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
-                            if not re.search(r'[a-zA-Z]', text_no_punct):
-                                is_valid_quote = False
-                    
-                    if is_fallback or not is_valid_quote:
-                        # Show fallback message
-                        with st.expander("💬 Proof Quote"):
-                            st.caption("A representative quote that illustrates this insight.")
-                            st.info("No representative quote available")
-                    elif proof_quote_preview_full:
-                        proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
-                        proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
-                        
-                        with st.expander("💬 Proof Quote"):
-                            st.caption("A representative quote that illustrates this insight.")
-                            # Show truncated preview
-                            st.write(proof_quote_preview_truncated)
-                            # Show full text if truncated
-                            if proof_quote_is_truncated:
-                                st.markdown("---")
-                                st.markdown("**Full quote:**")
-                                st.write(proof_quote_preview_full)
-                            
-                            # Always show receipt links (human-readable)
-                            receipt_links = topic_card.get('receipt_links', [])
-                            if receipt_links:
-                                st.markdown("---")
-                                st.caption("**Source excerpts:**")
-                                # Show first few receipts as human-readable excerpts
-                                receipt_displays = []
-                                for receipt_ref in receipt_links[:5]:  # Show first 5
-                                    receipt_display = render.build_receipt_display(
-                                        receipt_ref, canonical_model, topic_id=source_topic_id
-                                    )
-                                    receipt_displays.append(receipt_display)
-                                
-                                for receipt in receipt_displays:
-                                    excerpt = receipt['quote_excerpt']
-                                    if excerpt and excerpt != 'No quote text available':
-                                        participant_label = receipt['participant_label']
-                                        st.caption(f"• {participant_label}: \"{excerpt}\"")
-                                
-                                if len(receipt_links) > 5:
-                                    st.caption(f"... and {len(receipt_links) - 5} more source excerpts")
-                    
-                    # Always show receipts expander
-                    receipt_links = topic_card.get('receipt_links', [])
-                    if receipt_links:
-                        total_receipts = len(receipt_links)
-                        with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
+                        text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
+                        if not re.search(r'[a-zA-Z]', text_no_punct):
+                            is_valid_quote = False
+                
+                if is_fallback or not is_valid_quote:
+                    # Show fallback message
+                    with st.expander("💬 Proof Quote"):
+                        st.caption("A representative quote that illustrates this insight.")
+                        st.info("No representative quote available")
+                elif proof_quote_preview_full:
+                    with st.expander("💬 Proof Quote"):
+                        st.caption("A representative quote that illustrates this insight.")
+                        # Show full quote only
+                        st.write(proof_quote_preview_full)
+                
+                # Always show receipts expander
+                receipt_links = topic_card.get('receipt_links', [])
+                if receipt_links:
+                    total_receipts = len(receipt_links)
+                    with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
                             st.caption("**Receipts** are source excerpts (quotes from participants) that support this insight.")
                             st.caption("Source excerpts supporting this insight (ranked by relevance):")
                             
@@ -3899,79 +3871,51 @@ def render_takeaways(digest_artifact: Dict[str, Any], canonical_model):
                     evidence_count = topic_card.get('evidence_count', 0)
                     st.metric("Evidence", evidence_count)
                     st.caption("Number of source excerpts supporting this insight")
-                    
-                    # Proof quote preview (truncated to 320 chars)
-                    proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
-                    
-                    # Check if this is a fallback message or invalid quote
-                    is_fallback = proof_quote_preview_full == "No representative quote available"
-                    is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
-                    
-                    # Additional validation: check if it's not just a numeric placeholder
+            
+            # Proof Quote and Show Receipts expanders on full width below
+            if topic_card:
+                # Proof quote preview (truncated to 320 chars)
+                proof_quote_preview_full = topic_card.get('proof_quote_preview', '')
+                
+                # Check if this is a fallback message or invalid quote
+                is_fallback = proof_quote_preview_full == "No representative quote available"
+                is_valid_quote = proof_quote_preview_full and proof_quote_preview_full.strip() and not is_fallback
+                
+                # Additional validation: check if it's not just a numeric placeholder
+                if is_valid_quote:
+                    text_stripped = proof_quote_preview_full.strip()
+                    # Check if it's just a numeric index pattern
+                    numeric_patterns = [
+                        r'^\d+\.?\s*$',  # "1", "1.", "1. "
+                        r'^\d+\)\s*$',   # "1)"
+                        r'^\(\d+\)\s*$', # "(1)"
+                    ]
+                    for pattern in numeric_patterns:
+                        if re.match(pattern, text_stripped):
+                            is_valid_quote = False
+                            break
+                    # Check if it has actual words (letters)
                     if is_valid_quote:
-                        text_stripped = proof_quote_preview_full.strip()
-                        # Check if it's just a numeric index pattern
-                        numeric_patterns = [
-                            r'^\d+\.?\s*$',  # "1", "1.", "1. "
-                            r'^\d+\)\s*$',   # "1)"
-                            r'^\(\d+\)\s*$', # "(1)"
-                        ]
-                        for pattern in numeric_patterns:
-                            if re.match(pattern, text_stripped):
-                                is_valid_quote = False
-                                break
-                        # Check if it has actual words (letters)
-                        if is_valid_quote:
-                            text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
-                            if not re.search(r'[a-zA-Z]', text_no_punct):
-                                is_valid_quote = False
-                    
-                    if is_fallback or not is_valid_quote:
-                        # Show fallback message
-                        with st.expander("💬 Proof Quote"):
-                            st.caption("A representative quote that illustrates this insight.")
-                            st.info("No representative quote available")
-                    elif proof_quote_preview_full:
-                        proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
-                        proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
-                        
-                        with st.expander("💬 Proof Quote"):
-                            st.caption("A representative quote that illustrates this insight.")
-                            # Show truncated preview
-                            st.write(proof_quote_preview_truncated)
-                            # Show full text if truncated
-                            if proof_quote_is_truncated:
-                                st.markdown("---")
-                                st.markdown("**Full quote:**")
-                                st.write(proof_quote_preview_full)
-                            
-                            # Always show receipt links (human-readable)
-                            receipt_links = topic_card.get('receipt_links', [])
-                            if receipt_links:
-                                st.markdown("---")
-                                st.caption("**Source excerpts:**")
-                                # Show first few receipts as human-readable excerpts
-                                receipt_displays = []
-                                for receipt_ref in receipt_links[:5]:  # Show first 5
-                                    receipt_display = render.build_receipt_display(
-                                        receipt_ref, canonical_model, topic_id=source_topic_id
-                                    )
-                                    receipt_displays.append(receipt_display)
-                                
-                                for receipt in receipt_displays:
-                                    excerpt = receipt['quote_excerpt']
-                                    if excerpt and excerpt != 'No quote text available':
-                                        participant_label = receipt['participant_label']
-                                        st.caption(f"• {participant_label}: \"{excerpt}\"")
-                                
-                                if len(receipt_links) > 5:
-                                    st.caption(f"... and {len(receipt_links) - 5} more source excerpts")
-                    
-                    # Always show receipts expander
-                    receipt_links = topic_card.get('receipt_links', [])
-                    if receipt_links:
-                        total_receipts = len(receipt_links)
-                        with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
+                        text_no_punct = re.sub(r'[^\w\s]', '', text_stripped)
+                        if not re.search(r'[a-zA-Z]', text_no_punct):
+                            is_valid_quote = False
+                
+                if is_fallback or not is_valid_quote:
+                    # Show fallback message
+                    with st.expander("💬 Proof Quote"):
+                        st.caption("A representative quote that illustrates this insight.")
+                        st.info("No representative quote available")
+                elif proof_quote_preview_full:
+                    with st.expander("💬 Proof Quote"):
+                        st.caption("A representative quote that illustrates this insight.")
+                        # Show full quote only
+                        st.write(proof_quote_preview_full)
+                
+                # Always show receipts expander
+                receipt_links = topic_card.get('receipt_links', [])
+                if receipt_links:
+                    total_receipts = len(receipt_links)
+                    with st.expander(f"📋 Show Receipts ({total_receipts} total)"):
                             st.caption("**Receipts** are source excerpts (quotes from participants) that support this insight.")
                             st.caption("Source excerpts supporting this insight (ranked by relevance):")
                             
