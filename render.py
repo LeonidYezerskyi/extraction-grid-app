@@ -105,6 +105,45 @@ def format_sentiment_mix_plain(sentiment_mix: Dict[str, int]) -> Dict[str, Any]:
     }
 
 
+def format_sentiment_chip(sentiment: Optional[str]) -> str:
+    """
+    Format a single sentiment as an HTML chip/badge.
+    
+    Args:
+        sentiment: Sentiment label (positive, negative, neutral, mixed, unknown) or None
+    
+    Returns:
+        HTML string with sentiment chip
+    """
+    if not sentiment:
+        return '<span style="color: #9ca3af; font-size: 11px;">No sentiment</span>'
+    
+    color_map = {
+        'positive': '#22c55e',  # green
+        'negative': '#ef4444',  # red
+        'neutral': '#6b7280',  # gray
+        'mixed': '#f59e0b',  # amber
+        'unknown': '#9ca3af'  # light gray
+    }
+    
+    label_map = {
+        'positive': 'Positive',
+        'negative': 'Negative',
+        'neutral': 'Neutral',
+        'mixed': 'Mixed',
+        'unknown': 'Unknown'
+    }
+    
+    color = color_map.get(sentiment.lower(), '#9ca3af')
+    label = label_map.get(sentiment.lower(), sentiment.capitalize())
+    
+    return (
+        f'<span style="display: inline-block; padding: 2px 8px; margin: 2px; '
+        f'background-color: {color}20; color: {color}; border: 1px solid {color}; '
+        f'border-radius: 12px; font-size: 11px; font-weight: 500;">{label}</span>'
+    )
+
+
 def format_sentiment_mix_html(sentiment_mix: Dict[str, int]) -> str:
     """
     Format sentiment mix as a simple HTML snippet with inline styles.
@@ -293,6 +332,7 @@ def build_receipt_display(
         - quote_index: int (internal quote index)
         - source_context: str (optional context like "Interview" or "Response")
         - receipt_ref: str (original reference, kept for internal use)
+        - sentiment: Optional[str] - sentiment tone for this quote (positive, negative, neutral, mixed, unknown)
     """
     if not receipt_ref or ':' not in receipt_ref:
         return {
@@ -364,6 +404,22 @@ def build_receipt_display(
         if 'source' in meta or 'context' in meta or 'type' in meta:
             source_context = meta.get('source') or meta.get('context') or meta.get('type')
     
+    # Get sentiment for this quote block
+    sentiment = None
+    if evidence_cell and evidence_cell.sentiments_raw and quote_index >= 0:
+        import parse_quotes
+        import parse_sentiment
+        quote_blocks = parse_quotes.parse_quotes(evidence_cell.quotes_raw)
+        if quote_blocks:
+            sentiment_blocks = parse_sentiment.parse_and_align_sentiments(
+                evidence_cell.sentiments_raw, quote_blocks
+            )
+            # Find sentiment block matching this quote_index
+            for sentiment_block in sentiment_blocks:
+                if sentiment_block.get('quote_index') == quote_index:
+                    sentiment = sentiment_block.get('tone_rollup', 'unknown')
+                    break
+    
     # Calculate relevance score for ranking
     # Factors: quote length (prefer medium-length quotes), has text, participant diversity
     relevance_score = 0.0
@@ -387,7 +443,8 @@ def build_receipt_display(
         'quote_index': quote_index,
         'source_context': source_context,
         'receipt_ref': receipt_ref,  # Keep original for internal reference
-        'relevance_score': relevance_score  # For ranking
+        'relevance_score': relevance_score,  # For ranking
+        'sentiment': sentiment  # Sentiment tone for this quote
     }
 
 

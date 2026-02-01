@@ -1069,49 +1069,101 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
             
-            # Proof quote preview (truncated to 320 chars)
-            if is_fallback or not is_valid_quote:
-                # Show fallback message
-                with st.expander("💬 Proof Quote"):
-                    st.caption("A representative quote that illustrates this topic.")
-                    st.info("No representative quote available")
-            elif proof_quote_preview_full:
-                with st.expander("💬 Proof Quote"):
-                    st.caption("A representative quote that illustrates this topic.")
-                    # Show full quote only
-                    st.write(proof_quote_preview_full)
-            
-            # Evidence summary (lightweight reference, not full list)
-            # Key Takeaways shows full receipts; Topic Cards show summary to avoid duplication
-            if receipt_links:
-                evidence_summary = render.build_evidence_summary(
-                    receipt_links, canonical_model, topic_id=topic_id, max_preview=3
-                )
+            # Proof quote preview (static, 2-3 lines, ~150 chars, with sentiment chip)
+            if is_valid_quote and proof_quote_preview_full:
+                # Get sentiment for proof quote
+                proof_quote_ref = card.get('proof_quote_ref', '')
+                proof_quote_sentiment = None
+                if proof_quote_ref and ':' in proof_quote_ref:
+                    # Get sentiment from receipt display
+                    proof_receipt = render.build_receipt_display(
+                        proof_quote_ref, canonical_model, topic_id=topic_id
+                    )
+                    proof_quote_sentiment = proof_receipt.get('sentiment')
                 
-                st.markdown("---")
-                st.caption("**Evidence Summary**")
+                # Truncate to ~150 chars for 2-3 lines preview
+                proof_preview_short = render.truncate(proof_quote_preview_full, 150)
                 
-                # Show total count and participant count
-                col1, col2 = st.columns(2)
+                # Display static preview with sentiment chip
+                col1, col2 = st.columns([4, 1])
                 with col1:
-                    st.metric("Total Evidence", evidence_summary['total_count'])
+                    st.caption(f"*\"{proof_preview_short}\"*")
                 with col2:
-                    st.metric("Participants", evidence_summary['participant_count'])
-                
-                # Show preview of top evidence
-                if evidence_summary['preview_receipts']:
-                    st.caption("**Top evidence excerpts:**")
-                    for receipt in evidence_summary['preview_receipts']:
+                    if proof_quote_sentiment:
+                        st.markdown(render.format_sentiment_chip(proof_quote_sentiment), unsafe_allow_html=True)
+            
+            # Receipts expander with pagination
+            if receipt_links:
+                total_receipts = len(receipt_links)
+                with st.expander(f"📋 Show receipts ({total_receipts})"):
+                    # Convert receipt references to display objects
+                    receipt_displays = []
+                    for receipt_ref in receipt_links:
+                        receipt_display = render.build_receipt_display(
+                            receipt_ref, canonical_model, topic_id=topic_id
+                        )
+                        receipt_displays.append(receipt_display)
+                    
+                    # Rank receipts for consistent ordering
+                    ranked_receipts, _ = render.rank_and_limit_receipts(
+                        receipt_displays,
+                        max_display=len(receipt_displays),  # Rank all, don't limit yet
+                        prioritize_diversity=True
+                    )
+                    
+                    # Pagination setup
+                    receipt_page_key = f'receipts_page_topic_{topic_id}'
+                    if receipt_page_key not in st.session_state:
+                        st.session_state[receipt_page_key] = 0
+                    
+                    current_page = st.session_state[receipt_page_key]
+                    page_size = 8  # 5-10 receipts per page
+                    total_pages = (len(ranked_receipts) + page_size - 1) // page_size if ranked_receipts else 1
+                    start_idx = current_page * page_size
+                    end_idx = min(start_idx + page_size, len(ranked_receipts))
+                    
+                    # Get receipts for current page
+                    displayed_receipts = ranked_receipts[start_idx:end_idx]
+                    
+                    # Show progress indicator
+                    if total_pages > 1:
+                        st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {len(ranked_receipts)}")
+                    
+                    # Display receipts
+                    for receipt in displayed_receipts:
                         participant_label = receipt.get('participant_label', 'Unknown')
-                        excerpt = receipt.get('quote_excerpt', '')
-                        if excerpt and excerpt != 'No quote text available':
-                            st.caption(f"• **{participant_label}**: \"{excerpt}\"")
-                
-                # Show reference to Key Takeaways for full evidence
-                if evidence_summary['has_more']:
-                    st.info(f"📋 View all {evidence_summary['total_count']} supporting excerpts in **Key Takeaways** section above.")
-                else:
-                    st.caption("All evidence shown above. See **Key Takeaways** for full context.")
+                        quote_full = receipt.get('quote_full', '')
+                        sentiment = receipt.get('sentiment')
+                        
+                        if quote_full and quote_full != 'No quote text available':
+                            # Display receipt with participant label, quote, and sentiment
+                            col1, col2 = st.columns([4, 1])
+                            with col1:
+                                st.write(f"**{participant_label}**: \"{quote_full}\"")
+                            with col2:
+                                if sentiment:
+                                    st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
+                        else:
+                            st.caption(f"**{participant_label}**: (Quote text not available)")
+                        
+                        st.markdown("---")
+                    
+                    # Pagination controls
+                    if total_pages > 1:
+                        col1, col2, col3 = st.columns([1, 1, 1])
+                        
+                        with col1:
+                            if st.button("◀ Previous", key=f"receipts_prev_topic_{topic_id}", disabled=(current_page == 0), use_container_width=True):
+                                st.session_state[receipt_page_key] = max(0, current_page - 1)
+                                st.rerun()
+                        
+                        with col2:
+                            st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                        
+                        with col3:
+                            if st.button("Next ▶", key=f"receipts_next_topic_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                                st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
+                                st.rerun()
             else:
                 st.caption("No evidence available for this topic.")
             
@@ -3862,49 +3914,101 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
             # Sentiment mix
             st.markdown(render.format_sentiment_mix_html(sentiment_mix), unsafe_allow_html=True)
             
-            # Proof quote preview (truncated to 320 chars)
-            if is_fallback or not is_valid_quote:
-                # Show fallback message
-                with st.expander("💬 Proof Quote"):
-                    st.caption("A representative quote that illustrates this topic.")
-                    st.info("No representative quote available")
-            elif proof_quote_preview_full:
-                with st.expander("💬 Proof Quote"):
-                    st.caption("A representative quote that illustrates this topic.")
-                    # Show full quote only
-                    st.write(proof_quote_preview_full)
-            
-            # Evidence summary (lightweight reference, not full list)
-            # Key Takeaways shows full receipts; Topic Cards show summary to avoid duplication
-            if receipt_links:
-                evidence_summary = render.build_evidence_summary(
-                    receipt_links, canonical_model, topic_id=topic_id, max_preview=3
-                )
+            # Proof quote preview (static, 2-3 lines, ~150 chars, with sentiment chip)
+            if is_valid_quote and proof_quote_preview_full:
+                # Get sentiment for proof quote
+                proof_quote_ref = card.get('proof_quote_ref', '')
+                proof_quote_sentiment = None
+                if proof_quote_ref and ':' in proof_quote_ref:
+                    # Get sentiment from receipt display
+                    proof_receipt = render.build_receipt_display(
+                        proof_quote_ref, canonical_model, topic_id=topic_id
+                    )
+                    proof_quote_sentiment = proof_receipt.get('sentiment')
                 
-                st.markdown("---")
-                st.caption("**Evidence Summary**")
+                # Truncate to ~150 chars for 2-3 lines preview
+                proof_preview_short = render.truncate(proof_quote_preview_full, 150)
                 
-                # Show total count and participant count
-                col1, col2 = st.columns(2)
+                # Display static preview with sentiment chip
+                col1, col2 = st.columns([4, 1])
                 with col1:
-                    st.metric("Total Evidence", evidence_summary['total_count'])
+                    st.caption(f"*\"{proof_preview_short}\"*")
                 with col2:
-                    st.metric("Participants", evidence_summary['participant_count'])
-                
-                # Show preview of top evidence
-                if evidence_summary['preview_receipts']:
-                    st.caption("**Top evidence excerpts:**")
-                    for receipt in evidence_summary['preview_receipts']:
+                    if proof_quote_sentiment:
+                        st.markdown(render.format_sentiment_chip(proof_quote_sentiment), unsafe_allow_html=True)
+            
+            # Receipts expander with pagination
+            if receipt_links:
+                total_receipts = len(receipt_links)
+                with st.expander(f"📋 Show receipts ({total_receipts})"):
+                    # Convert receipt references to display objects
+                    receipt_displays = []
+                    for receipt_ref in receipt_links:
+                        receipt_display = render.build_receipt_display(
+                            receipt_ref, canonical_model, topic_id=topic_id
+                        )
+                        receipt_displays.append(receipt_display)
+                    
+                    # Rank receipts for consistent ordering
+                    ranked_receipts, _ = render.rank_and_limit_receipts(
+                        receipt_displays,
+                        max_display=len(receipt_displays),  # Rank all, don't limit yet
+                        prioritize_diversity=True
+                    )
+                    
+                    # Pagination setup
+                    receipt_page_key = f'receipts_page_topic_{topic_id}'
+                    if receipt_page_key not in st.session_state:
+                        st.session_state[receipt_page_key] = 0
+                    
+                    current_page = st.session_state[receipt_page_key]
+                    page_size = 8  # 5-10 receipts per page
+                    total_pages = (len(ranked_receipts) + page_size - 1) // page_size if ranked_receipts else 1
+                    start_idx = current_page * page_size
+                    end_idx = min(start_idx + page_size, len(ranked_receipts))
+                    
+                    # Get receipts for current page
+                    displayed_receipts = ranked_receipts[start_idx:end_idx]
+                    
+                    # Show progress indicator
+                    if total_pages > 1:
+                        st.caption(f"Page {current_page + 1} of {total_pages} — Showing receipts {start_idx + 1}-{end_idx} of {len(ranked_receipts)}")
+                    
+                    # Display receipts
+                    for receipt in displayed_receipts:
                         participant_label = receipt.get('participant_label', 'Unknown')
-                        excerpt = receipt.get('quote_excerpt', '')
-                        if excerpt and excerpt != 'No quote text available':
-                            st.caption(f"• **{participant_label}**: \"{excerpt}\"")
-                
-                # Show reference to Key Takeaways for full evidence
-                if evidence_summary['has_more']:
-                    st.info(f"📋 View all {evidence_summary['total_count']} supporting excerpts in **Key Takeaways** section above.")
-                else:
-                    st.caption("All evidence shown above. See **Key Takeaways** for full context.")
+                        quote_full = receipt.get('quote_full', '')
+                        sentiment = receipt.get('sentiment')
+                        
+                        if quote_full and quote_full != 'No quote text available':
+                            # Display receipt with participant label, quote, and sentiment
+                            col1, col2 = st.columns([4, 1])
+                            with col1:
+                                st.write(f"**{participant_label}**: \"{quote_full}\"")
+                            with col2:
+                                if sentiment:
+                                    st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
+                        else:
+                            st.caption(f"**{participant_label}**: (Quote text not available)")
+                        
+                        st.markdown("---")
+                    
+                    # Pagination controls
+                    if total_pages > 1:
+                        col1, col2, col3 = st.columns([1, 1, 1])
+                        
+                        with col1:
+                            if st.button("◀ Previous", key=f"receipts_prev_topic_{topic_id}", disabled=(current_page == 0), use_container_width=True):
+                                st.session_state[receipt_page_key] = max(0, current_page - 1)
+                                st.rerun()
+                        
+                        with col2:
+                            st.markdown(f"<div style='text-align: center; padding-top: 8px;'><strong>{current_page + 1} / {total_pages}</strong></div>", unsafe_allow_html=True)
+                        
+                        with col3:
+                            if st.button("Next ▶", key=f"receipts_next_topic_{topic_id}", disabled=(current_page >= total_pages - 1), use_container_width=True):
+                                st.session_state[receipt_page_key] = min(total_pages - 1, current_page + 1)
+                                st.rerun()
             else:
                 st.caption("No evidence available for this topic.")
             
