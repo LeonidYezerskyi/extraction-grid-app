@@ -1106,10 +1106,22 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         sentiment = receipt.get('sentiment')
                         
                         if quote_full and quote_full != 'No quote text available':
+                            # Check if quote is longer than 400 chars
+                            is_long_quote = len(quote_full) > 400
+                            quote_display = quote_full
+                            
+                            if is_long_quote:
+                                # Truncate to ~400 chars for initial display
+                                quote_display = render.truncate(quote_full, 400)
+                            
                             # Display receipt with participant label, quote, and sentiment
                             col1, col2 = st.columns([4, 1])
                             with col1:
-                                st.write(f"**{participant_label}**: \"{quote_full}\"")
+                                st.write(f"**{participant_label}**: \"{quote_display}\"")
+                                # Show expander for full quote if truncated
+                                if is_long_quote:
+                                    with st.expander("📖 Show full quote"):
+                                        st.write(quote_full)
                             with col2:
                                 if sentiment:
                                     st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
@@ -3921,10 +3933,22 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                         sentiment = receipt.get('sentiment')
                         
                         if quote_full and quote_full != 'No quote text available':
+                            # Check if quote is longer than 400 chars
+                            is_long_quote = len(quote_full) > 400
+                            quote_display = quote_full
+                            
+                            if is_long_quote:
+                                # Truncate to ~400 chars for initial display
+                                quote_display = render.truncate(quote_full, 400)
+                            
                             # Display receipt with participant label, quote, and sentiment
                             col1, col2 = st.columns([4, 1])
                             with col1:
-                                st.write(f"**{participant_label}**: \"{quote_full}\"")
+                                st.write(f"**{participant_label}**: \"{quote_display}\"")
+                                # Show expander for full quote if truncated
+                                if is_long_quote:
+                                    with st.expander("📖 Show full quote"):
+                                        st.write(quote_full)
                             with col2:
                                 if sentiment:
                                     st.markdown(render.format_sentiment_chip(sentiment), unsafe_allow_html=True)
