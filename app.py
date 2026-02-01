@@ -1841,8 +1841,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     </script>
     """, unsafe_allow_html=True)
     
-    # Table header
-    header_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 3])
+    # Table header (with Confidence Signals column)
+    header_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 2.5])
     with header_cols[0]:
         st.markdown("**Topic**")
     with header_cols[1]:
@@ -1854,7 +1854,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     with header_cols[4]:
         st.markdown("**Sentiment**")
     with header_cols[5]:
-        st.markdown("**Summary**")
+        st.markdown("**🔍 Confidence Signals**")
     
     st.divider()
     
@@ -1862,7 +1862,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     for idx, topic in enumerate(page_topics):
         rank = start_idx + idx + 1 if total_pages > 1 else idx + 1
         
-        row_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 3])
+        row_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 2.5])
         
         with row_cols[0]:
             # Topic label (frozen column effect via styling)
@@ -1910,28 +1910,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                 st.caption("*<span style='color: #f59e0b;'>⚠️ Low confidence</span>*", unsafe_allow_html=True)
         
         with row_cols[5]:
-            # Summary with truncation and expand toggle
-            summary_full = topic.summary_text
-            # Handle missing summaries with placeholder
-            if not summary_full or summary_full.strip() == "":
-                st.markdown("*<span style='color: #9ca3af; font-style: italic;'>No summary available</span>*", unsafe_allow_html=True)
-            else:
-                summary_truncated = render.truncate(summary_full, SUMMARY_TRUNCATE_LENGTH)
-                is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
-                
-                if is_truncated:
-                    # Show truncated text
-                    st.markdown(summary_truncated)
-                    # Expand/collapse using expander (local state only)
-                    with st.expander("📖 Show full summary", expanded=False):
-                        st.markdown(summary_full)
-                else:
-                    # Show full text if not truncated
-                    st.markdown(summary_full)
-        
-        # Confidence section (collapsible)
-        confidence_data = _get_topic_confidence_data(topic, canonical_model)
-        with st.expander(f"🔍 Confidence Signals — {topic.topic_label}", expanded=False):
+            # Confidence Signals column (always expanded)
+            confidence_data = _get_topic_confidence_data(topic, canonical_model)
             # Mentions count
             st.markdown(f"**Mentions:** {confidence_data['mentions_count']}")
             
@@ -1942,6 +1922,26 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             st.markdown("**Sentiment Distribution:**")
             sentiment_chips_html = render.format_sentiment_mix_html(confidence_data['sentiment_distribution'])
             st.html(sentiment_chips_html)
+        
+        # Summary as full-width row below the topic row
+        st.markdown("**Summary:**")
+        summary_full = topic.summary_text
+        # Handle missing summaries with placeholder
+        if not summary_full or summary_full.strip() == "":
+            st.markdown("*<span style='color: #9ca3af; font-style: italic;'>No summary available</span>*", unsafe_allow_html=True)
+        else:
+            summary_truncated = render.truncate(summary_full, SUMMARY_TRUNCATE_LENGTH)
+            is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
+            
+            if is_truncated:
+                # Show truncated text
+                st.markdown(summary_truncated)
+                # Expand/collapse using expander (local state only)
+                with st.expander("📖 Show full summary", expanded=False):
+                    st.markdown(summary_full)
+            else:
+                # Show full text if not truncated
+                st.markdown(summary_full)
         
         st.divider()
 
@@ -4780,8 +4780,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     </script>
     """, unsafe_allow_html=True)
     
-    # Table header
-    header_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 3])
+    # Table header (with Confidence Signals column)
+    header_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 2.5])
     with header_cols[0]:
         st.markdown("**Topic**")
     with header_cols[1]:
@@ -4793,7 +4793,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     with header_cols[4]:
         st.markdown("**Sentiment**")
     with header_cols[5]:
-        st.markdown("**Summary**")
+        st.markdown("**🔍 Confidence Signals**")
     
     st.divider()
     
@@ -4801,7 +4801,7 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     for idx, topic in enumerate(page_topics):
         rank = start_idx + idx + 1 if total_pages > 1 else idx + 1
         
-        row_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 3])
+        row_cols = st.columns([2, 1.5, 1.5, 1.5, 1.5, 2.5])
         
         with row_cols[0]:
             # Topic label (frozen column effect via styling)
@@ -4849,28 +4849,8 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
                 st.caption("*<span style='color: #f59e0b;'>⚠️ Low confidence</span>*", unsafe_allow_html=True)
         
         with row_cols[5]:
-            # Summary with truncation and expand toggle
-            summary_full = topic.summary_text
-            # Handle missing summaries with placeholder
-            if not summary_full or summary_full.strip() == "":
-                st.markdown("*<span style='color: #9ca3af; font-style: italic;'>No summary available</span>*", unsafe_allow_html=True)
-            else:
-                summary_truncated = render.truncate(summary_full, SUMMARY_TRUNCATE_LENGTH)
-                is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
-                
-                if is_truncated:
-                    # Show truncated text
-                    st.markdown(summary_truncated)
-                    # Expand/collapse using expander (local state only)
-                    with st.expander("📖 Show full summary", expanded=False):
-                        st.markdown(summary_full)
-                else:
-                    # Show full text if not truncated
-                    st.markdown(summary_full)
-        
-        # Confidence section (collapsible)
-        confidence_data = _get_topic_confidence_data(topic, canonical_model)
-        with st.expander(f"🔍 Confidence Signals — {topic.topic_label}", expanded=False):
+            # Confidence Signals column (always expanded)
+            confidence_data = _get_topic_confidence_data(topic, canonical_model)
             # Mentions count
             st.markdown(f"**Mentions:** {confidence_data['mentions_count']}")
             
@@ -4881,6 +4861,26 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
             st.markdown("**Sentiment Distribution:**")
             sentiment_chips_html = render.format_sentiment_mix_html(confidence_data['sentiment_distribution'])
             st.html(sentiment_chips_html)
+        
+        # Summary as full-width row below the topic row
+        st.markdown("**Summary:**")
+        summary_full = topic.summary_text
+        # Handle missing summaries with placeholder
+        if not summary_full or summary_full.strip() == "":
+            st.markdown("*<span style='color: #9ca3af; font-style: italic;'>No summary available</span>*", unsafe_allow_html=True)
+        else:
+            summary_truncated = render.truncate(summary_full, SUMMARY_TRUNCATE_LENGTH)
+            is_truncated = len(summary_full) > SUMMARY_TRUNCATE_LENGTH
+            
+            if is_truncated:
+                # Show truncated text
+                st.markdown(summary_truncated)
+                # Expand/collapse using expander (local state only)
+                with st.expander("📖 Show full summary", expanded=False):
+                    st.markdown(summary_full)
+            else:
+                # Show full text if not truncated
+                st.markdown(summary_full)
         
         st.divider()
 
