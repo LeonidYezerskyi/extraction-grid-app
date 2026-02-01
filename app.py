@@ -1224,18 +1224,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                     st.caption("A representative quote that illustrates this topic.")
                     st.info("No representative quote available")
             elif proof_quote_preview_full:
-                proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
-                proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
-                
                 with st.expander("💬 Proof Quote"):
                     st.caption("A representative quote that illustrates this topic.")
-                    # Show truncated preview
-                    st.write(proof_quote_preview_truncated)
-                    # Show full text if truncated
-                    if proof_quote_is_truncated:
-                        st.markdown("---")
-                        st.markdown("**Full quote:**")
-                        st.write(proof_quote_preview_full)
+                    # Show full quote only
+                    st.write(proof_quote_preview_full)
             
             # Evidence summary (lightweight reference, not full list)
             # Key Takeaways shows full receipts; Topic Cards show summary to avoid duplication
@@ -4173,18 +4165,10 @@ def render_topic_cards(digest_artifact: Dict[str, Any], canonical_model):
                     st.caption("A representative quote that illustrates this topic.")
                     st.info("No representative quote available")
             elif proof_quote_preview_full:
-                proof_quote_preview_truncated = render.format_quote_preview(proof_quote_preview_full)
-                proof_quote_is_truncated = len(proof_quote_preview_full) > render.QUOTE_PREVIEW_MAX
-                
                 with st.expander("💬 Proof Quote"):
                     st.caption("A representative quote that illustrates this topic.")
-                    # Show truncated preview
-                    st.write(proof_quote_preview_truncated)
-                    # Show full text if truncated
-                    if proof_quote_is_truncated:
-                        st.markdown("---")
-                        st.markdown("**Full quote:**")
-                        st.write(proof_quote_preview_full)
+                    # Show full quote only
+                    st.write(proof_quote_preview_full)
             
             # Evidence summary (lightweight reference, not full list)
             # Key Takeaways shows full receipts; Topic Cards show summary to avoid duplication

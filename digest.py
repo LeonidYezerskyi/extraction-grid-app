@@ -143,7 +143,8 @@ def _build_topic_card(
     sentiment_mix = _compute_sentiment_mix(canonical_model.evidence_cells, topic_id)
     
     # Build receipt links (all quote references for this topic)
-    receipt_links = []
+    # Use set to ensure uniqueness, then convert to list
+    receipt_links_set = set()
     for evidence_cell in canonical_model.evidence_cells:
         if evidence_cell.topic_id != topic_id:
             continue
@@ -153,7 +154,10 @@ def _build_topic_card(
             quote_blocks = parse_quotes.parse_quotes(evidence_cell.quotes_raw)
             for quote_block in quote_blocks:
                 receipt_ref = f"{evidence_cell.participant_id}:{quote_block['quote_index']}"
-                receipt_links.append(receipt_ref)
+                receipt_links_set.add(receipt_ref)
+    
+    # Convert to list to maintain order (or use sorted if order matters)
+    receipt_links = list(receipt_links_set)
     
     return {
         'topic_id': topic_id,
