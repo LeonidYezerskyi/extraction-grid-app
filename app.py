@@ -69,7 +69,7 @@ def get_config_knobs_hash(config: Dict[str, Any]) -> str:
 def initialize_session_state():
     """Initialize session state with default values."""
     if SESSION_KEYS['top_n'] not in st.session_state:
-        st.session_state[SESSION_KEYS['top_n']] = 10
+        st.session_state[SESSION_KEYS['top_n']] = 4
     if SESSION_KEYS['auto_select_top_n'] not in st.session_state:
         st.session_state[SESSION_KEYS['auto_select_top_n']] = True
     if SESSION_KEYS['selected_topics'] not in st.session_state:
@@ -259,16 +259,18 @@ def filter_topics(
     coverage_tier = filters.get('coverage_tier')
     if coverage_tier:
         if coverage_tier == 'High':
-            filtered = [t for t in filtered if t['coverage_rate'] >= 0.7]
+            filtered = [t for t in filtered if t.get('coverage_rate', 0) >= 0.7]
         elif coverage_tier == 'Medium':
-            filtered = [t for t in filtered if 0.4 <= t['coverage_rate'] < 0.7]
+            filtered = [t for t in filtered if 0.4 <= t.get('coverage_rate', 0) < 0.7]
         elif coverage_tier == 'Low':
-            filtered = [t for t in filtered if t['coverage_rate'] < 0.4]
+            filtered = [t for t in filtered if t.get('coverage_rate', 0) < 0.4]
     
     # Tone rollup filter
     tone_rollup = filters.get('tone_rollup')
     if tone_rollup:
         # Need to compute sentiment mix for each topic
+        # Note: tone_rollup is already lowercase from render_sidebar, but we normalize it here for safety
+        tone_rollup_normalized = tone_rollup.lower() if isinstance(tone_rollup, str) else tone_rollup
         filtered_by_tone = []
         for topic_agg in filtered:
             topic_id = topic_agg['topic_id']
@@ -276,7 +278,7 @@ def filter_topics(
             total = sum(sentiment_mix.values())
             if total > 0:
                 dominant = max(sentiment_mix.items(), key=lambda x: x[1])[0]
-                if dominant == tone_rollup.lower():
+                if dominant == tone_rollup_normalized:
                     filtered_by_tone.append(topic_agg)
         filtered = filtered_by_tone
     
@@ -2902,7 +2904,7 @@ def get_config_knobs_hash(config: Dict[str, Any]) -> str:
 def initialize_session_state():
     """Initialize session state with default values."""
     if SESSION_KEYS['top_n'] not in st.session_state:
-        st.session_state[SESSION_KEYS['top_n']] = 10
+        st.session_state[SESSION_KEYS['top_n']] = 4
     if SESSION_KEYS['auto_select_top_n'] not in st.session_state:
         st.session_state[SESSION_KEYS['auto_select_top_n']] = True
     if SESSION_KEYS['selected_topics'] not in st.session_state:
@@ -3092,16 +3094,18 @@ def filter_topics(
     coverage_tier = filters.get('coverage_tier')
     if coverage_tier:
         if coverage_tier == 'High':
-            filtered = [t for t in filtered if t['coverage_rate'] >= 0.7]
+            filtered = [t for t in filtered if t.get('coverage_rate', 0) >= 0.7]
         elif coverage_tier == 'Medium':
-            filtered = [t for t in filtered if 0.4 <= t['coverage_rate'] < 0.7]
+            filtered = [t for t in filtered if 0.4 <= t.get('coverage_rate', 0) < 0.7]
         elif coverage_tier == 'Low':
-            filtered = [t for t in filtered if t['coverage_rate'] < 0.4]
+            filtered = [t for t in filtered if t.get('coverage_rate', 0) < 0.4]
     
     # Tone rollup filter
     tone_rollup = filters.get('tone_rollup')
     if tone_rollup:
         # Need to compute sentiment mix for each topic
+        # Note: tone_rollup is already lowercase from render_sidebar, but we normalize it here for safety
+        tone_rollup_normalized = tone_rollup.lower() if isinstance(tone_rollup, str) else tone_rollup
         filtered_by_tone = []
         for topic_agg in filtered:
             topic_id = topic_agg['topic_id']
@@ -3109,7 +3113,7 @@ def filter_topics(
             total = sum(sentiment_mix.values())
             if total > 0:
                 dominant = max(sentiment_mix.items(), key=lambda x: x[1])[0]
-                if dominant == tone_rollup.lower():
+                if dominant == tone_rollup_normalized:
                     filtered_by_tone.append(topic_agg)
         filtered = filtered_by_tone
     
