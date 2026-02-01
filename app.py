@@ -15,7 +15,6 @@ import render
 import export
 import edge_cases
 import explore_model
-import recipient
 
 
 # Pipeline version for cache invalidation
@@ -1397,108 +1396,24 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     else:
         ranked_topics = st.session_state[cache_key]
     
-    # Get available recipients
-    default_recipients = recipient.create_default_recipients()
+    # Use ranked topics directly (no recipient filtering)
+    filtered_topics = ranked_topics
     
-    # Ensure "General" is the first option
-    recipient_options = {r.recipient_id: r for r in default_recipients}
-    if "general" not in recipient_options:
-        recipient_options["general"] = recipient.RecipientProfile(
-            recipient_id="general",
-            label="General",
-            priority_topics=[],
-            deprioritized_topics=[]
-        )
+    # Show header
+    st.markdown("### 📊 Explore Topics")
     
-    # Recipient selector - ensure "general" is first
-    recipient_ids = list(recipient_options.keys())
-    # Sort to put "general" first, then others
-    recipient_ids = sorted(recipient_ids, key=lambda x: (x != "general", x))
-    recipient_labels = [recipient_options[rid].label for rid in recipient_ids]
-    
-    # Initialize selected recipient (default to "general")
-    if 'explore_selected_recipient' not in st.session_state:
-        st.session_state['explore_selected_recipient'] = "general"
-    
-    # Track previous recipient to detect changes
-    previous_recipient = st.session_state.get('explore_previous_recipient', None)
-    
-    # Create selectbox for recipient selection
-    selected_recipient_idx = recipient_ids.index(st.session_state['explore_selected_recipient']) if st.session_state['explore_selected_recipient'] in recipient_ids else 0
-    selected_label = st.selectbox(
-        "View for:",
-        options=recipient_labels,
-        index=selected_recipient_idx,
-        key='explore_recipient_selector',
-        help="Select a recipient persona to filter topics"
-    )
-    
-    # Update session state with selected recipient ID
-    selected_recipient_id = recipient_ids[recipient_labels.index(selected_label)]
-    
-    # Detect recipient change and reset page to avoid out-of-bounds
-    if previous_recipient != selected_recipient_id:
-        st.session_state['explore_page'] = 1
-        st.session_state['explore_previous_recipient'] = selected_recipient_id
-    
-    st.session_state['explore_selected_recipient'] = selected_recipient_id
-    
-    # Get selected recipient profile
-    selected_recipient = recipient_options[selected_recipient_id]
-    
-    # Apply recipient filtering (instant, no recomputation)
-    filtered_topics = recipient.filter_topics_for_recipient(ranked_topics, selected_recipient)
-    
-    # Show active recipient label
-    st.markdown(f"### 📊 Explore Topics — *{selected_recipient.label}*")
-    
-    # Show info if recipient filtering is not configured (all recipients have empty priority/deprioritized lists)
-    if not selected_recipient.priority_topics and not selected_recipient.deprioritized_topics:
-        st.info("ℹ️ Recipient filtering is not configured. All topics are shown with default ranking. To enable filtering, configure `priority_topics` and `deprioritized_topics` in recipient profiles.")
-    
-    # Empty state: No topics after recipient filtering
+    # Empty state: No topics
     if not filtered_topics:
         if len(ranked_topics) == 0:
             # No topics at all in the data
             st.warning("⚠️ **No topics found in the uploaded data.**\n\nPlease check your file and ensure it contains valid topic data.")
         else:
-            # Topics exist but were filtered out
-            deprioritized_topics = [t for t in ranked_topics 
-                                   if t.topic_id.lower().strip() in [tid.lower().strip() 
-                                                                     for tid in selected_recipient.deprioritized_topics]]
-            has_deprioritized = len(deprioritized_topics) > 0
-            has_priority = len(selected_recipient.priority_topics) > 0
-            
-            explanation_parts = []
-            if has_deprioritized:
-                explanation_parts.append(f"- {len(deprioritized_topics)} topic(s) are deprioritized for this recipient")
-                explanation_parts.append("- Deprioritized topics are hidden unless they have high signal (importance ≥ 1.9 and coverage ≥ 90%)")
-            if has_priority:
-                explanation_parts.append(f"- Priority topics are boosted but may still be filtered if they don't meet signal thresholds")
-            
-            if not explanation_parts:
-                explanation_parts.append("- The recipient filter may be too restrictive")
-            
-            st.warning(
-                f"⚠️ **No topics match the current filter for *{selected_recipient.label}*.**\n\n"
-                f"**Why this happened:**\n" + "\n".join(explanation_parts) + "\n\n"
-                f"**What to try:**\n"
-                f"- Select 'General' recipient to see all {len(ranked_topics)} topics\n"
-                f"- Check the recipient's priority and deprioritized topic settings\n"
-                f"- Verify that topics meet the signal thresholds"
-            )
+            # Topics exist but were filtered out (should not happen without recipient filtering)
+            st.warning("⚠️ **No topics to display.**")
         return
     
     # Show topic count caption
-    if selected_recipient.priority_topics or selected_recipient.deprioritized_topics:
-        filtered_count = len(filtered_topics)
-        total_count = len(ranked_topics)
-        if filtered_count < total_count:
-            st.info(f"ℹ️ Showing {filtered_count} of {total_count} topics (filtered for {selected_recipient.label})")
-        else:
-            st.caption(f"Showing all {filtered_count} topics")
-    else:
-        st.caption(f"Showing all {len(filtered_topics)} topics")
+    st.caption(f"Showing {len(filtered_topics)} topics")
     
     # Pagination (on filtered topics)
     items_per_page = 15
@@ -2967,7 +2882,6 @@ import render
 import export
 import edge_cases
 import explore_model
-import recipient
 
 
 # Pipeline version for cache invalidation
@@ -4349,108 +4263,24 @@ def render_explore_tab(topic_aggregates: List[Dict[str, Any]], canonical_model):
     else:
         ranked_topics = st.session_state[cache_key]
     
-    # Get available recipients
-    default_recipients = recipient.create_default_recipients()
+    # Use ranked topics directly (no recipient filtering)
+    filtered_topics = ranked_topics
     
-    # Ensure "General" is the first option
-    recipient_options = {r.recipient_id: r for r in default_recipients}
-    if "general" not in recipient_options:
-        recipient_options["general"] = recipient.RecipientProfile(
-            recipient_id="general",
-            label="General",
-            priority_topics=[],
-            deprioritized_topics=[]
-        )
+    # Show header
+    st.markdown("### 📊 Explore Topics")
     
-    # Recipient selector - ensure "general" is first
-    recipient_ids = list(recipient_options.keys())
-    # Sort to put "general" first, then others
-    recipient_ids = sorted(recipient_ids, key=lambda x: (x != "general", x))
-    recipient_labels = [recipient_options[rid].label for rid in recipient_ids]
-    
-    # Initialize selected recipient (default to "general")
-    if 'explore_selected_recipient' not in st.session_state:
-        st.session_state['explore_selected_recipient'] = "general"
-    
-    # Track previous recipient to detect changes
-    previous_recipient = st.session_state.get('explore_previous_recipient', None)
-    
-    # Create selectbox for recipient selection
-    selected_recipient_idx = recipient_ids.index(st.session_state['explore_selected_recipient']) if st.session_state['explore_selected_recipient'] in recipient_ids else 0
-    selected_label = st.selectbox(
-        "View for:",
-        options=recipient_labels,
-        index=selected_recipient_idx,
-        key='explore_recipient_selector',
-        help="Select a recipient persona to filter topics"
-    )
-    
-    # Update session state with selected recipient ID
-    selected_recipient_id = recipient_ids[recipient_labels.index(selected_label)]
-    
-    # Detect recipient change and reset page to avoid out-of-bounds
-    if previous_recipient != selected_recipient_id:
-        st.session_state['explore_page'] = 1
-        st.session_state['explore_previous_recipient'] = selected_recipient_id
-    
-    st.session_state['explore_selected_recipient'] = selected_recipient_id
-    
-    # Get selected recipient profile
-    selected_recipient = recipient_options[selected_recipient_id]
-    
-    # Apply recipient filtering (instant, no recomputation)
-    filtered_topics = recipient.filter_topics_for_recipient(ranked_topics, selected_recipient)
-    
-    # Show active recipient label
-    st.markdown(f"### 📊 Explore Topics — *{selected_recipient.label}*")
-    
-    # Show info if recipient filtering is not configured (all recipients have empty priority/deprioritized lists)
-    if not selected_recipient.priority_topics and not selected_recipient.deprioritized_topics:
-        st.info("ℹ️ Recipient filtering is not configured. All topics are shown with default ranking. To enable filtering, configure `priority_topics` and `deprioritized_topics` in recipient profiles.")
-    
-    # Empty state: No topics after recipient filtering
+    # Empty state: No topics
     if not filtered_topics:
         if len(ranked_topics) == 0:
             # No topics at all in the data
             st.warning("⚠️ **No topics found in the uploaded data.**\n\nPlease check your file and ensure it contains valid topic data.")
         else:
-            # Topics exist but were filtered out
-            deprioritized_topics = [t for t in ranked_topics 
-                                   if t.topic_id.lower().strip() in [tid.lower().strip() 
-                                                                     for tid in selected_recipient.deprioritized_topics]]
-            has_deprioritized = len(deprioritized_topics) > 0
-            has_priority = len(selected_recipient.priority_topics) > 0
-            
-            explanation_parts = []
-            if has_deprioritized:
-                explanation_parts.append(f"- {len(deprioritized_topics)} topic(s) are deprioritized for this recipient")
-                explanation_parts.append("- Deprioritized topics are hidden unless they have high signal (importance ≥ 1.9 and coverage ≥ 90%)")
-            if has_priority:
-                explanation_parts.append(f"- Priority topics are boosted but may still be filtered if they don't meet signal thresholds")
-            
-            if not explanation_parts:
-                explanation_parts.append("- The recipient filter may be too restrictive")
-            
-            st.warning(
-                f"⚠️ **No topics match the current filter for *{selected_recipient.label}*.**\n\n"
-                f"**Why this happened:**\n" + "\n".join(explanation_parts) + "\n\n"
-                f"**What to try:**\n"
-                f"- Select 'General' recipient to see all {len(ranked_topics)} topics\n"
-                f"- Check the recipient's priority and deprioritized topic settings\n"
-                f"- Verify that topics meet the signal thresholds"
-            )
+            # Topics exist but were filtered out (should not happen without recipient filtering)
+            st.warning("⚠️ **No topics to display.**")
         return
     
     # Show topic count caption
-    if selected_recipient.priority_topics or selected_recipient.deprioritized_topics:
-        filtered_count = len(filtered_topics)
-        total_count = len(ranked_topics)
-        if filtered_count < total_count:
-            st.info(f"ℹ️ Showing {filtered_count} of {total_count} topics (filtered for {selected_recipient.label})")
-        else:
-            st.caption(f"Showing all {filtered_count} topics")
-    else:
-        st.caption(f"Showing all {len(filtered_topics)} topics")
+    st.caption(f"Showing {len(filtered_topics)} topics")
     
     # Pagination (on filtered topics)
     items_per_page = 15
