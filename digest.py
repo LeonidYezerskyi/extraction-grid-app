@@ -171,11 +171,132 @@ def _build_topic_card(
     }
 
 
+def _transform_to_takeaway(
+    topic_one_liner: str,
+    topic_id: str,
+    coverage_rate: float,
+    evidence_count: int,
+    index: int
+) -> str:
+    """
+    Transform topic_one_liner into an implication-style takeaway.
+    
+    Uses rule-based framing to convert analytical topic descriptions into
+    executive-focused insights. Ensures output is different from input.
+    
+    Args:
+        topic_one_liner: Original topic description
+        topic_id: Topic identifier
+        coverage_rate: Coverage rate (0.0-1.0)
+        evidence_count: Number of evidence excerpts
+        index: Takeaway index (0-based) for deterministic variation when multiple strategies apply
+    
+    Returns:
+        Implication-style takeaway text (max 180 chars)
+    """
+    if not topic_one_liner or not topic_one_liner.strip():
+        # Fallback: create takeaway from topic_id
+        topic_label = topic_id.replace('_', ' ').title()
+        return f"Key finding: {topic_label} emerged as a significant theme."
+    
+    text = topic_one_liner.strip()
+    text_lower = text.lower()
+    
+    # Determine framing strategy based on content and metrics
+    # Use index for deterministic variation when multiple strategies apply
+    strategies = []
+    
+    # High coverage suggests broad consensus
+    if coverage_rate >= 0.5:
+        strategies.append('consensus')
+    
+    # High evidence count suggests strong signal
+    if evidence_count >= 10:
+        strategies.append('strong_signal')
+    
+    # Check for value/benefit keywords
+    value_keywords = ['value', 'benefit', 'advantage', 'strength', 'positive', 'good', 'effective', 'success']
+    if any(kw in text_lower for kw in value_keywords):
+        strategies.append('value')
+    
+    # Check for problem/friction keywords
+    problem_keywords = ['problem', 'issue', 'challenge', 'difficulty', 'barrier', 'friction', 'negative', 'concern']
+    if any(kw in text_lower for kw in problem_keywords):
+        strategies.append('problem')
+    
+    # Check for behavior/pattern keywords
+    behavior_keywords = ['participants', 'users', 'people', 'consistently', 'often', 'frequently', 'tend', 'typically']
+    if any(kw in text_lower for kw in behavior_keywords):
+        strategies.append('behavior')
+    
+    # Select strategy deterministically (use index to vary)
+    if not strategies:
+        # Default: use value framing
+        strategy = 'value'
+    else:
+        strategy = strategies[index % len(strategies)]
+    
+    # Apply transformation based on strategy
+    if strategy == 'consensus':
+        # Consensus framing: emphasize broad agreement
+        if text[0].isupper():
+            takeaway = f"Participants widely agree: {text[0].lower() + text[1:]}"
+        else:
+            takeaway = f"Participants widely agree: {text}"
+    elif strategy == 'strong_signal':
+        # Strong signal framing: emphasize evidence strength
+        if text[0].isupper():
+            takeaway = f"Strong evidence indicates: {text[0].lower() + text[1:]}"
+        else:
+            takeaway = f"Strong evidence indicates: {text}"
+    elif strategy == 'value':
+        # Value framing: emphasize benefits
+        if text[0].isupper():
+            takeaway = f"The platform's value lies in: {text[0].lower() + text[1:]}"
+        else:
+            takeaway = f"The platform's value lies in: {text}"
+    elif strategy == 'problem':
+        # Problem framing: emphasize constraints
+        if text[0].isupper():
+            takeaway = f"Adoption is constrained by: {text[0].lower() + text[1:]}"
+        else:
+            takeaway = f"Adoption is constrained by: {text}"
+    elif strategy == 'behavior':
+        # Behavior framing: emphasize patterns
+        if text[0].isupper():
+            takeaway = f"Participants consistently emphasize: {text[0].lower() + text[1:]}"
+        else:
+            takeaway = f"Participants consistently emphasize: {text}"
+    else:
+        # Default: implication framing
+        if text[0].isupper():
+            takeaway = f"Key insight: {text[0].lower() + text[1:]}"
+        else:
+            takeaway = f"Key insight: {text}"
+    
+    # Ensure takeaway is different from original (add prefix if identical)
+    if takeaway.strip() == text:
+        takeaway = f"Key finding: {text}"
+    
+    # Enforce 180 character limit
+    if len(takeaway) > 180:
+        # Truncate at word boundary
+        truncated = takeaway[:177]
+        last_space = truncated.rfind(' ')
+        if last_space > 140:  # Only truncate at word if we keep most of the text
+            takeaway = truncated[:last_space] + '...'
+        else:
+            takeaway = truncated + '...'
+    
+    return takeaway
+
+
 def _build_takeaways(selected_topics: List[Dict[str, Any]], n_takeaways: int) -> List[Dict[str, Any]]:
     """
     Build takeaways from top N selected topics.
     
-    Deterministic MVP: convert topic_one_liner into takeaways.
+    Converts topic_one_liner into implication-style takeaways using rule-based
+    transformation. Ensures takeaways are distinct from topic_one_liner.
     
     Args:
         selected_topics: List of topic aggregates, sorted by score (descending)
@@ -184,8 +305,10 @@ def _build_takeaways(selected_topics: List[Dict[str, Any]], n_takeaways: int) ->
     Returns:
         List of takeaway dictionaries with:
         - takeaway_index: int (1-based)
-        - takeaway_text: str (from topic_one_liner)
+        - takeaway_text: str (implication-style, max 180 chars)
         - source_topic_id: str
+        - evidence_count: int (from topic aggregate)
+        - proof_quote_preview: str (from topic aggregate)
     """
     takeaways = []
     
@@ -193,19 +316,34 @@ def _build_takeaways(selected_topics: List[Dict[str, Any]], n_takeaways: int) ->
     top_topics = selected_topics[:n_takeaways]
     
     for idx, topic_aggregate in enumerate(top_topics, start=1):
-        topic_one_liner = topic_aggregate.get('topic_one_liner')
+        topic_one_liner = topic_aggregate.get('topic_one_liner', '')
+        topic_id = topic_aggregate.get('topic_id', '')
+        coverage_rate = topic_aggregate.get('coverage_rate', 0.0)
+        evidence_count = topic_aggregate.get('evidence_count', 0)
+        proof_quote_preview = topic_aggregate.get('proof_quote_preview', '')
         
-        # Use topic_one_liner as takeaway text, or fallback to topic_id
-        if topic_one_liner and topic_one_liner.strip():
-            takeaway_text = topic_one_liner.strip()
-        else:
-            # Fallback: use topic_id as takeaway
-            takeaway_text = f"Topic: {topic_aggregate['topic_id']}"
+        # Transform topic_one_liner into implication-style takeaway
+        takeaway_text = _transform_to_takeaway(
+            topic_one_liner,
+            topic_id,
+            coverage_rate,
+            evidence_count,
+            idx - 1  # 0-based index for strategy selection
+        )
+        
+        # Ensure takeaway is different from topic_one_liner
+        if takeaway_text.strip() == topic_one_liner.strip():
+            # Force differentiation by adding prefix
+            takeaway_text = f"Key insight: {topic_one_liner}"
+            if len(takeaway_text) > 180:
+                takeaway_text = takeaway_text[:177] + '...'
         
         takeaways.append({
             'takeaway_index': idx,
             'takeaway_text': takeaway_text,
-            'source_topic_id': topic_aggregate['topic_id']
+            'source_topic_id': topic_id,
+            'evidence_count': evidence_count,
+            'proof_quote_preview': proof_quote_preview
         })
     
     return takeaways
@@ -353,7 +491,67 @@ if __name__ == '__main__':
             self.assertIn('takeaway_index', takeaway)
             self.assertIn('takeaway_text', takeaway)
             self.assertIn('source_topic_id', takeaway)
-            self.assertEqual(takeaway['takeaway_text'], 'This is a summary')
+            self.assertIn('evidence_count', takeaway)
+            self.assertIn('proof_quote_preview', takeaway)
+            # Takeaway text should be transformed, not identical to topic_one_liner
+            self.assertNotEqual(takeaway['takeaway_text'], 'This is a summary')
+            # But should contain the essence of the summary
+            self.assertIn('summary', takeaway['takeaway_text'].lower())
+        
+        def test_takeaway_text_different_from_topic_one_liner(self):
+            """Test that takeaway text is different from topic_one_liner."""
+            participants = [Participant('p1', 'P1', {})]
+            topics = [Topic('topic1'), Topic('topic2')]
+            evidence_cells = [
+                EvidenceCell('p1', 'topic1', 'Users value the platform', '1. Quote.', None, {}),
+                EvidenceCell('p1', 'topic2', 'There are technical challenges', '1. Quote.', None, {})
+            ]
+            
+            model = CanonicalModel(participants, topics, evidence_cells)
+            aggregates = score.compute_topic_aggregates(model)
+            digest = build_digest(model, aggregates, n_takeaways=2)
+            
+            self.assertEqual(len(digest['takeaways']), 2)
+            
+            # Check each takeaway
+            for takeaway in digest['takeaways']:
+                takeaway_text = takeaway['takeaway_text']
+                source_topic_id = takeaway['source_topic_id']
+                
+                # Find corresponding topic card
+                topic_card = next(
+                    (tc for tc in digest['topic_cards'] if tc['topic_id'] == source_topic_id),
+                    None
+                )
+                self.assertIsNotNone(topic_card, f"Topic card not found for {source_topic_id}")
+                
+                topic_one_liner = topic_card.get('topic_one_liner', '')
+                if topic_one_liner:
+                    # Takeaway text must be different from topic_one_liner
+                    self.assertNotEqual(
+                        takeaway_text.strip(),
+                        topic_one_liner.strip(),
+                        f"Takeaway text should differ from topic_one_liner: {takeaway_text}"
+                    )
+        
+        def test_takeaway_text_length(self):
+            """Test that takeaway text respects 180 character limit."""
+            participants = [Participant('p1', 'P1', {})]
+            topics = [Topic('topic1')]
+            # Create a very long summary
+            long_summary = 'This is a very long summary that goes on and on ' * 10
+            evidence_cells = [
+                EvidenceCell('p1', 'topic1', long_summary, '1. Quote.', None, {})
+            ]
+            
+            model = CanonicalModel(participants, topics, evidence_cells)
+            aggregates = score.compute_topic_aggregates(model)
+            digest = build_digest(model, aggregates, n_takeaways=1)
+            
+            takeaway = digest['takeaways'][0]
+            takeaway_text = takeaway['takeaway_text']
+            # Takeaway should be truncated to max 180 chars
+            self.assertLessEqual(len(takeaway_text), 180)
         
         def test_topic_card_structure(self):
             """Test that topic cards contain expected fields."""
